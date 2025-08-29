@@ -8,7 +8,7 @@ return new class extends Migration
 {
     public function up()
     {
-        Schema::create('registros_riego', function (Blueprint $table) {
+        Schema::create('registros_riego', function (Blueprint $table) { // ← Nombre correcto
             $table->id();
             $table->foreignId('tarea_id')->constrained()->onDelete('cascade');
             $table->foreignId('user_id')->constrained()->onDelete('cascade');
@@ -17,11 +17,16 @@ return new class extends Migration
             $table->string('metodo')->nullable();
             $table->text('observaciones')->nullable();
             $table->timestamps();
+
+            // Índices
+            $table->index('tarea_id');
+            $table->index('user_id');
+            $table->index('fecha_hora');
         });
     }
 
     public function down()
     {
-        Schema::dropIfExists('registros_riego');
+        Schema::dropIfExists('registros_riego'); // ← Nombre correcto
     }
 };

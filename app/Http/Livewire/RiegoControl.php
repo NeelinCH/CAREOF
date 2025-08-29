@@ -12,7 +12,7 @@ class RiegoControl extends Component
     public $planta;
     public $tarea;
     public $puerto = 'COM9';
-    public $tiempoRiego = 2000; // ← AÑADIR ESTA LÍNEA
+    public $tiempoRiego = 2000;
     public $cantidadMl = 500;
     public $mensaje = '';
     public $mostrarConfiguracion = false;
@@ -29,7 +29,7 @@ class RiegoControl extends Component
         
         // Cargar configuración guardada
         $this->puerto = session('arduino_puerto', 'COM9');
-        $this->tiempoRiego = session('arduino_tiempo_riego', 2000); // ← AÑADIR ESTA LÍNEA
+        $this->tiempoRiego = session('arduino_tiempo_riego', 2000);
         $this->cantidadMl = session('arduino_cantidad_ml', 500);
     }
 
@@ -49,7 +49,7 @@ class RiegoControl extends Component
             $response = Http::withToken(auth()->user()->currentAccessToken()->token ?? '')
                 ->post(url("/api/plantas/{$this->planta->id}/tareas/{$this->tarea->id}/activar-riego"), [
                     'puerto' => $this->puerto,
-                    'tiempo' => $this->tiempoRiego, // ← AÑADIR ESTA LÍNEA
+                    'tiempo' => $this->tiempoRiego,
                     'cantidad_ml' => $this->cantidadMl
                 ]);
 
@@ -71,13 +71,20 @@ class RiegoControl extends Component
             $response = Http::withToken(auth()->user()->currentAccessToken()->token ?? '')
                 ->post(url('/api/arduino/configuracion'), [
                     'puerto' => $this->puerto,
-                    'tiempo_riego' => $this->tiempoRiego, // ← AÑADIR ESTA LÍNEA
+                    'tiempo_riego' => $this->tiempoRiego,
                     'cantidad_ml' => $this->cantidadMl
                 ]);
 
             if ($response->successful()) {
                 $this->mensaje = '✅ Configuración guardada';
                 $this->mostrarConfiguracion = false;
+                
+                // Guardar en sesión
+                session([
+                    'arduino_puerto' => $this->puerto,
+                    'arduino_tiempo_riego' => $this->tiempoRiego,
+                    'arduino_cantidad_ml' => $this->cantidadMl
+                ]);
             }
         } catch (\Exception $e) {
             $this->mensaje = '❌ Error guardando configuración';

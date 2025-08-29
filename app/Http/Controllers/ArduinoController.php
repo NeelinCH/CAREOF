@@ -7,7 +7,8 @@ use Illuminate\Support\Facades\Auth;
 use App\Models\Planta;
 use App\Models\Tarea;
 use App\Models\RegistroRiego;
-use Illuminate\Auth\Access\AuthorizationException;
+use App\Models\Actividad;
+use Illuminate\Support\Facades\Http;
 
 class ArduinoController extends Controller
 {
@@ -18,45 +19,64 @@ class ArduinoController extends Controller
 
         // Verificar autorización
         if (!Auth::user()->can('update', $planta) || !Auth::user()->can('update', $tarea)) {
-            throw new AuthorizationException('No tienes permisos para realizar esta acción.');
+            return response()->json(['error' => 'No autorizado'], 403);
         }
 
         try {
-            // Intentar comunicar con Arduino
+            // Configuración de Arduino
             $puerto = $request->input('puerto', 'COM9');
-            $comando = 'R'; // Comando para activar riego
-            
-            // Simulación de comunicación con Arduino (en producción usarías fopen/fwrite)
-            $activado = $this->comunicarConArduino($puerto, $comando);
-            
-            if ($activado) {
+            $tiempoRiego = $request->input('tiempo', 2000); // 2 segundos
+            $cantidadMl = $request->input('cantidad_ml', 500);
+
+            // Simular comunicación con Arduino (en producción sería real)
+            $comando = 'R' . $tiempoRiego;
+            $resultado = $this->enviarComandoArduino($puerto, $comando);
+
+            if ($resultado) {
                 // Registrar el riego
                 $registro = RegistroRiego::create([
                     'tarea_id' => $tareaId,
                     'user_id' => Auth::id(),
                     'fecha_hora' => now(),
-                    'cantidad_ml' => $request->input('cantidad_ml', 500),
-                    'metodo' => 'Arduino USB',
-                    'observaciones' => 'Riego activado mediante sistema automático'
+                    'cantidad_ml' => $cantidadMl,
+                    'metodo' => 'Arduino Automático',
+                    'observaciones' => 'Riego automático activado por sistema'
                 ]);
 
-                // Actualizar próxima fecha de riego
+                // Actualizar próxima fecha
                 $tarea->update([
                     'proxima_fecha' => now()->addDays($tarea->frecuencia_dias)
                 ]);
 
+                // Registrar actividad
+                Actividad::create([
+                    'user_id' => Auth::id(),
+                    'planta_id' => $plantaId,
+                    'tipo' => 'riego',
+                    'descripcion' => "activó riego automático de {$cantidadMl}ml",
+                    'detalles' => [
+                        'tarea_id' => $tareaId,
+                        'registro_id' => $registro->id,
+                        'metodo' => 'Arduino',
+                        'puerto' => $puerto,
+                        'tiempo' => $tiempoRiego
+                    ]
+                ]);
+
                 return response()->json([
                     'success' => true,
-                    'message' => 'Riego activado correctamente',
-                    'registro' => $registro
+                    'message' => 'Riego automático activado correctamente',
+                    'registro' => $registro,
+                    'duracion' => $tiempoRiego . 'ms',
+                    'cantidad' => $cantidadMl . 'ml'
                 ]);
-            } else {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Error al comunicar con el dispositivo Arduino'
-                ], 500);
             }
-            
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Error en la comunicación con Arduino'
+            ], 500);
+
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
@@ -65,10 +85,12 @@ class ArduinoController extends Controller
         }
     }
 
-    private function comunicarConArduino($puerto, $comando)
+    private function enviarComandoArduino($puerto, $comando)
     {
         // En entorno de desarrollo, simular éxito
         if (app()->environment('local', 'testing')) {
+            // Simular delay de Arduino
+            usleep(500000); // 0.5 segundos
             return true;
         }
 
@@ -88,7 +110,30 @@ class ArduinoController extends Controller
         return response()->json([
             'conectado' => true,
             'puerto' => 'COM9',
-            'estado' => 'Disponible'
+            'estado' => 'Disponible',
+            'ultima_comunicacion' => now()->toISOString(),
+            'version' => '1.0.0'
+        ]);
+    }
+
+    public function configuracionArduino(Request $request)
+    {
+        $request->validate([
+            'puerto' => 'required|string',
+            'tiempo_riego' => 'required|integer|min:100|max:10000',
+            'cantidad_ml' => 'required|integer|min:1|max:5000'
+        ]);
+
+        // Guardar configuración (podrías usar la tabla configuraciones)
+        session([
+            'arduino_puerto' => $request->puerto,
+            'arduino_tiempo_riego' => $request->tiempo_riego,
+            'arduino_cantidad_ml' => $request->cantidad_ml
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Configuración guardada correctamente'
         ]);
     }
 }

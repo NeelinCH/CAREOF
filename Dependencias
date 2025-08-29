@@ -1,0 +1,17 @@
+# Para abrir nuestro proyecto:
+composer install
+composer require laravel/breeze --dev --ignore-platform-req=ext-gd
+composer require laravel/sanctum
+composer require livewire/livewire
+composer require maatwebsite/excel
+composer require barryvdh/laravel-debugbar --dev
+composer require intervention/image
+npm install
+npm install -D tailwindcss postcss autoprefixer
+npm install @tailwindcss/forms
+npm install @tailwindcss/typography
+npm install alpinejs
+npm install @fortawesome/fontawesome-free
+
+php artisan storage:link (imagenes)
+

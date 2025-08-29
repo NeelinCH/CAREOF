@@ -9,6 +9,7 @@ use App\Http\Controllers\TareaController;
 use App\Http\Controllers\RegistroRiegoController;
 use App\Http\Controllers\ActividadController;
 use App\Http\Controllers\ArduinoController;
+use App\Http\Controllers\ArduinoConfigController;
 
 Route::get('/', function () {
     return view('welcome');
@@ -61,6 +62,18 @@ Route::middleware('guest')->group(function () {
     });
 });
 
+Route::prefix('plantas')->name('plantas.')->group(function () {
+    Route::prefix('{planta}')->group(function () {
+        Route::prefix('tareas')->name('tareas.')->group(function () {
+            Route::post('{tarea}/completar', [TareaController::class, 'completar'])
+                ->name('completar'); // Nombre: plantas.tareas.completar
+        });
+
+        // Verifica que el nombre sea exactamente 'plantas.tareas.completar'
+Route::get('/ruta', [Controller::class, 'method'])->name('plantas.tareas.completar');
+    });
+});
+
 // ================= RUTAS PROTEGIDAS (AUTH) =================
 Route::middleware('auth')->group(function () {
     // Ruta de logout - SIMPLIFICADA
@@ -86,7 +99,13 @@ Route::middleware('auth')->group(function () {
     // Arduino
     Route::post('plantas/{planta}/tareas/{tarea}/activar-riego', [ArduinoController::class, 'activarRiego'])->name('arduino.activar-riego');
     Route::get('api/arduino/estado', [ArduinoController::class, 'estadoArduino'])->name('arduino.estado');
-    
+// Rutas para configuración de Arduino
+Route::prefix('arduino')->group(function () {
+    Route::get('/config', [ArduinoConfigController::class, 'index'])->name('arduino.config');
+    Route::post('/config/save', [ArduinoConfigController::class, 'saveConfig'])->name('arduino.config.save');
+    Route::post('/config/test', [ArduinoConfigController::class, 'testConnection'])->name('arduino.config.test');
+});
+
     // Rutas anidadas para Tareas
     Route::prefix('plantas/{planta}')->group(function () {
         Route::get('tareas', [TareaController::class, 'index'])->name('plantas.tareas.index');
@@ -108,6 +127,13 @@ Route::middleware('auth')->group(function () {
                 Route::prefix('{registroRiego}')->group(function () {
                     Route::get('/', [RegistroRiegoController::class, 'show'])->name('plantas.tareas.registros.show');
                     Route::delete('/', [RegistroRiegoController::class, 'destroy'])->name('plantas.tareas.registros.destroy');
+
+                    Route::get('actividades/tipo', [ActividadController::class, 'tipo'])->name('actividades.tipo');
+                    Route::get('actividades/tipo/{tipo}', [ActividadController::class, 'filtrarPorTipo'])
+    ->name('actividades.filtrar.tipo');
+
+
+                    Route::get('estadisticas', [EstadisticaController::class, 'index'])->name('estadisticas.index');
                 });
             });
         });

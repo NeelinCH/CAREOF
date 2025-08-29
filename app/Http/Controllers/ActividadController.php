@@ -11,13 +11,21 @@ class ActividadController extends Controller
 {
     public function index()
     {
-        // Obtener actividades del usuario actual con eager loading
+        // Obtener todas las actividades del usuario con eager loading
         $actividades = Auth::user()->actividades()
             ->with(['planta', 'user'])
             ->orderBy('created_at', 'desc')
             ->paginate(20);
 
-        return view('actividades.index', compact('actividades'));
+        // Estadísticas resumen
+        $estadisticas = [
+            'total' => $actividades->total(),
+            'hoy' => Auth::user()->actividades()->whereDate('created_at', today())->count(),
+            'esta_semana' => Auth::user()->actividades()->whereBetween('created_at', [now()->startOfWeek(), now()->endOfWeek()])->count(),
+            'este_mes' => Auth::user()->actividades()->whereBetween('created_at', [now()->startOfMonth(), now()->endOfMonth()])->count(),
+        ];
+
+        return view('actividades.index', compact('actividades', 'estadisticas'));
     }
 
     public function porPlanta($plantaId)
@@ -31,18 +39,32 @@ class ActividadController extends Controller
             ->orderBy('created_at', 'desc')
             ->paginate(20);
 
-        return view('actividades.planta', compact('actividades', 'planta'));
+        // Estadísticas de la planta
+        $estadisticas = [
+            'total' => $actividades->total(),
+            'riego' => $planta->actividades()->where('tipo', 'riego')->count(),
+            'poda' => $planta->actividades()->where('tipo', 'poda')->count(),
+            'fertilizacion' => $planta->actividades()->where('tipo', 'fertilizacion')->count(),
+            'trasplante' => $planta->actividades()->where('tipo', 'trasplante')->count(),
+        ];
+
+        return view('actividades.planta', compact('actividades', 'planta', 'estadisticas'));
     }
 
-    // Método adicional para dashboard (actividades recientes)
-    public function recientes()
+    public function porTipo($tipo)
     {
-        $actividades = Auth::user()->actividades()
-            ->with(['planta'])
-            ->orderBy('created_at', 'desc')
-            ->limit(10)
-            ->get();
+        $tiposValidos = ['riego', 'poda', 'fertilizacion', 'trasplante', 'otro'];
+        
+        if (!in_array($tipo, $tiposValidos)) {
+            abort(404, 'Tipo de actividad no válido');
+        }
 
-        return response()->json($actividades);
+        $actividades = Auth::user()->actividades()
+            ->where('tipo', $tipo)
+            ->with(['planta', 'user'])
+            ->orderBy('created_at', 'desc')
+            ->paginate(20);
+
+        return view('actividades.tipo', compact('actividades', 'tipo'));
     }
 }

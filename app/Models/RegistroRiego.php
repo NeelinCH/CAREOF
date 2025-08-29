@@ -4,11 +4,13 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use App\Traits\RegistraActividad;
 
 class RegistroRiego extends Model
 {
-    use HasFactory, RegistraActividad;
+    use HasFactory;
+
+    // Especificar el nombre de la tabla
+    protected $table = 'registros_riego'; // ← AÑADIR ESTA LÍNEA
 
     protected $fillable = [
         'tarea_id',

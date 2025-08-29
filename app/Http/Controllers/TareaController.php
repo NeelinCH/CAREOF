@@ -128,4 +128,26 @@ class TareaController extends Controller
         return redirect()->route('plantas.tareas.index', $planta->id)
             ->with('success', 'Tarea eliminada correctamente.');
     }
+
+    public function completar(Planta $planta, Tarea $tarea)
+    {
+        // Verificar autorización usando Gate para la planta
+        if (!Auth::user()->can('update', $planta)) {
+            throw new AuthorizationException('No tienes permisos para completar tareas en esta planta.');
+        }
+        
+        // Verificar autorización usando Gate para la tarea
+        if (!Auth::user()->can('update', $tarea)) {
+            throw new AuthorizationException('No tienes permisos para completar esta tarea.');
+        }
+
+        // Lógica para completar la tarea
+        $tarea->update([
+            'completada' => true, 
+            'fecha_completada' => now(),
+            'proxima_fecha' => now()->addDays($tarea->frecuencia_dias)
+        ]);
+        
+        return redirect()->back()->with('success', 'Tarea completada correctamente');
+    }
 }

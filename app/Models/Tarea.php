@@ -4,11 +4,10 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use App\Traits\RegistraActividad;
 
 class Tarea extends Model
 {
-    use HasFactory, RegistraActividad;
+    use HasFactory;
 
     protected $fillable = [
         'planta_id',
@@ -32,7 +31,7 @@ class Tarea extends Model
 
     public function registrosRiego()
     {
-        return $this->hasMany(RegistroRiego::class);
+        return $this->hasMany(RegistroRiego::class, 'tarea_id'); // ← Especificar la clave foránea
     }
 
     public function recordatorios()
