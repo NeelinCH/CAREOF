@@ -40,9 +40,9 @@
                     </x-slot>
 
                     <x-slot name="content">
-                        <x-dropdown-link :href="route('profile.edit')">
-                            {{ __('Perfil') }}
-                        </x-dropdown-link>
+                       <x-dropdown-link :href="route('plantas.index')">
+    <i class="fas fa-user mr-2"></i> Mi Perfil
+</x-dropdown-link>
 
                         <!-- Authentication -->
                         <form method="POST" action="{{ route('logout') }}">

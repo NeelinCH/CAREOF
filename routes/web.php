@@ -10,6 +10,7 @@ use App\Http\Controllers\RegistroRiegoController;
 use App\Http\Controllers\ActividadController;
 use App\Http\Controllers\ArduinoController;
 use App\Http\Controllers\ArduinoConfigController;
+use App\Http\Controllers\ProfileController; // Añade esta línea
 
 Route::get('/', function () {
     return view('welcome');
@@ -70,7 +71,7 @@ Route::prefix('plantas')->name('plantas.')->group(function () {
         });
 
         // Verifica que el nombre sea exactamente 'plantas.tareas.completar'
-Route::get('/ruta', [Controller::class, 'method'])->name('plantas.tareas.completar');
+        Route::get('/ruta', [Controller::class, 'method'])->name('plantas.tareas.completar');
     });
 });
 
@@ -83,6 +84,11 @@ Route::middleware('auth')->group(function () {
         $request->session()->regenerateToken();
         return redirect('/')->with('success', 'Sesión cerrada correctamente');
     })->name('logout');
+
+    // RUTA DE PERFIL - AÑADIDA
+    Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
+    Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
+    Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
     // Dashboard
     Route::get('/dashboard', function () {
@@ -99,12 +105,13 @@ Route::middleware('auth')->group(function () {
     // Arduino
     Route::post('plantas/{planta}/tareas/{tarea}/activar-riego', [ArduinoController::class, 'activarRiego'])->name('arduino.activar-riego');
     Route::get('api/arduino/estado', [ArduinoController::class, 'estadoArduino'])->name('arduino.estado');
-// Rutas para configuración de Arduino
-Route::prefix('arduino')->group(function () {
-    Route::get('/config', [ArduinoConfigController::class, 'index'])->name('arduino.config');
-    Route::post('/config/save', [ArduinoConfigController::class, 'saveConfig'])->name('arduino.config.save');
-    Route::post('/config/test', [ArduinoConfigController::class, 'testConnection'])->name('arduino.config.test');
-});
+    
+    // Rutas para configuración de Arduino
+    Route::prefix('arduino')->group(function () {
+        Route::get('/config', [ArduinoConfigController::class, 'index'])->name('arduino.config');
+        Route::post('/config/save', [ArduinoConfigController::class, 'saveConfig'])->name('arduino.config.save');
+        Route::post('/config/test', [ArduinoConfigController::class, 'testConnection'])->name('arduino.config.test');
+    });
 
     // Rutas anidadas para Tareas
     Route::prefix('plantas/{planta}')->group(function () {
@@ -130,8 +137,7 @@ Route::prefix('arduino')->group(function () {
 
                     Route::get('actividades/tipo', [ActividadController::class, 'tipo'])->name('actividades.tipo');
                     Route::get('actividades/tipo/{tipo}', [ActividadController::class, 'filtrarPorTipo'])
-    ->name('actividades.filtrar.tipo');
-
+                        ->name('actividades.filtrar.tipo');
 
                     Route::get('estadisticas', [EstadisticaController::class, 'index'])->name('estadisticas.index');
                 });

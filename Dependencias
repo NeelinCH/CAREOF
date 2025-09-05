@@ -1,5 +1,6 @@
 # Para abrir nuestro proyecto:
 composer install
+composer require filament/filament
 composer require laravel/breeze --dev --ignore-platform-req=ext-gd
 composer require laravel/sanctum
 composer require livewire/livewire
@@ -12,6 +13,9 @@ npm install @tailwindcss/forms
 npm install @tailwindcss/typography
 npm install alpinejs
 npm install @fortawesome/fontawesome-free
+php artisan key:generate 
 
 php artisan storage:link (imagenes)
 
+#Usa 
+php artisan serve --reload para auto-recarga
