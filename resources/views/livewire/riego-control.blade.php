@@ -34,6 +34,27 @@
         </div>
     </div>
 
+    <!-- Botones de verificación de conexión -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
+        <button wire:click="verificarConexion" 
+                wire:loading.attr="disabled"
+                class="bg-green-500 hover:bg-green-600 text-white py-2 px-3 rounded text-sm transition duration-200 disabled:opacity-50">
+            <i class="fas fa-plug mr-1"></i> Verificar Conexión
+        </button>
+        
+        <button wire:click="testComunicacion" 
+                wire:loading.attr="disabled"
+                class="bg-blue-500 hover:bg-blue-600 text-white py-2 px-3 rounded text-sm transition duration-200 disabled:opacity-50">
+            <i class="fas fa-comment-alt mr-1"></i> Test Comunicación
+        </button>
+        
+        <button wire:click="escanearPuertos" 
+                wire:loading.attr="disabled"
+                class="bg-gray-500 hover:bg-gray-600 text-white py-2 px-3 rounded text-sm transition duration-200 disabled:opacity-50">
+            <i class="fas fa-search mr-1"></i> Escanear Puertos
+        </button>
+    </div>
+
     <!-- Configuración actual -->
     <div class="mb-4 bg-gray-50 p-4 rounded-lg">
         <h4 class="font-medium text-gray-700 mb-2">Configuración Actual</h4>
@@ -58,7 +79,7 @@
         <button wire:click="activarRiego" 
                 wire:loading.attr="disabled"
                 wire:key="boton-activar"
-                class="w-full bg-blue-500 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded flex items-center justify-center transition duration-200 disabled:opacity-50"
+                class="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-4 rounded flex items-center justify-center transition duration-200 disabled:opacity-50"
                 {{ $estadoArduino !== 'Disponible' ? 'disabled' : '' }}
                 {{ $mostrarConfiguracion ? 'disabled' : '' }}>
             <i class="fas fa-play-circle mr-2"></i> 
@@ -68,7 +89,7 @@
         
         <button wire:click="abrirConfiguracion"
                 wire:key="boton-configurar"
-                class="w-full bg-gray-500 hover:bg-gray-700 text-white font-bold py-3 px-4 rounded flex items-center justify-center transition duration-200"
+                class="w-full bg-gray-500 hover:bg-gray-600 text-white font-bold py-3 px-4 rounded flex items-center justify-center transition duration-200"
                 {{ $mostrarConfiguracion ? 'disabled' : '' }}>
             <i class="fas fa-cog mr-2"></i> Configurar
         </button>
@@ -104,8 +125,6 @@
                         <option value="COM4">COM4</option>
                         <option value="COM5">COM5</option>
                         <option value="COM6">COM6</option>
-                        <option value="/dev/ttyUSB0">/dev/ttyUSB0 (Linux)</option>
-                        <option value="/dev/ttyACM0">/dev/ttyACM0 (Linux)</option>
                     </select>
                     @error('puertoTemp') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
                 </div>
@@ -194,6 +213,38 @@ document.addEventListener('livewire:load', function() {
     // Notificaciones
     Livewire.on('notificacion', (data) => {
         showNotification(data.mensaje, data.tipo);
+    });
+
+    // Escuchar evento de puertos escaneados
+    Livewire.on('puertosEscaneados', (data) => {
+        if (data.puertos && data.puertos.length > 0) {
+            // Actualizar el selector de puertos
+            const selector = document.querySelector('select[wire\\:model="puertoTemp"]');
+            if (selector) {
+                // Mantener la opción actual si existe
+                const currentValue = selector.value;
+                
+                // Limpiar opciones excepto la primera
+                while (selector.options.length > 1) {
+                    selector.remove(1);
+                }
+                
+                // Agregar puertos encontrados
+                data.puertos.forEach(puerto => {
+                    const option = document.createElement('option');
+                    option.value = puerto;
+                    option.textContent = puerto;
+                    selector.appendChild(option);
+                });
+                
+                // Restaurar valor anterior si existe en los nuevos puertos
+                if (data.puertos.includes(currentValue)) {
+                    selector.value = currentValue;
+                }
+            }
+            
+            showNotification('Found ' + data.puertos.length + ' available ports', 'success');
+        }
     });
 });
 

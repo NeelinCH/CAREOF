@@ -26,6 +26,7 @@ class Actividad extends Model
         'updated_at' => 'datetime',
     ];
 
+    // Relaciones
     public function user()
     {
         return $this->belongsTo(User::class);
@@ -39,10 +40,10 @@ class Actividad extends Model
     // Método para obtener la descripción formateada
     public function getDescripcionCompletaAttribute()
     {
-        $usuario = $this->user->name;
-        $planta = $this->planta->nombre;
+        $usuario = $this->user->name ?? 'Usuario desconocido';
+        $planta = $this->planta->nombre ?? 'Planta desconocida';
         
-        return "{$usuario} {$this->descripcion} {$planta}";
+        return "{$usuario} {$this->descripcion} - {$planta}";
     }
 
     // Método para obtener el icono según el tipo
@@ -50,6 +51,9 @@ class Actividad extends Model
     {
         $iconos = [
             'riego' => 'fa-tint',
+            'fertilizacion' => 'fa-flask',
+            'poda' => 'fa-cut',
+            'trasplante' => 'fa-seedling',
             'planta' => 'fa-leaf',
             'tarea' => 'fa-tasks',
             'sistema' => 'fa-cog'
@@ -63,11 +67,35 @@ class Actividad extends Model
     {
         $colores = [
             'riego' => 'blue',
+            'fertilizacion' => 'yellow',
+            'poda' => 'green', 
+            'trasplante' => 'purple',
             'planta' => 'green',
-            'tarea' => 'yellow',
+            'tarea' => 'indigo',
             'sistema' => 'gray'
         ];
 
         return $colores[$this->tipo] ?? 'gray';
+    }
+
+    // Scopes útiles para consultas
+    public function scopePorTipo($query, $tipo)
+    {
+        return $query->where('tipo', $tipo);
+    }
+
+    public function scopePorUsuario($query, $userId)
+    {
+        return $query->where('user_id', $userId);
+    }
+
+    public function scopePorPlanta($query, $plantaId)
+    {
+        return $query->where('planta_id', $plantaId);
+    }
+
+    public function scopeRecientes($query, $dias = 30)
+    {
+        return $query->where('created_at', '>=', now()->subDays($dias));
     }
 }

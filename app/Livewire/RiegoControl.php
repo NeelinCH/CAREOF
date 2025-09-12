@@ -25,15 +25,20 @@ class RiegoControl extends Component
     public $tiempoRiegoTemp;
     public $cantidadMlTemp;
 
+    // Propiedades para recibir los IDs
+    public $plantaId;
+    public $tareaId;
+
     protected $listeners = [
         'riegoActivado' => 'actualizarEstado',
         'mostrarConfiguracionUpdated' => 'manejarActualizacionModal'
     ];
 
-    public function mount(Planta $planta, Tarea $tarea)
+    public function mount()
     {
-        $this->planta = $planta;
-        $this->tarea = $tarea;
+        // Obtener los IDs de las propiedades y cargar los modelos
+        $this->planta = Planta::findOrFail($this->plantaId);
+        $this->tarea = Tarea::findOrFail($this->tareaId);
         $this->verificarArduino();
         
         // Cargar configuración guardada en sesión
@@ -109,6 +114,82 @@ class RiegoControl extends Component
         }
     }
 
+    public function verificarConexion()
+    {
+        try {
+            $response = Http::withToken(auth()->user()->currentAccessToken()->token ?? '')
+                ->get(url('/api/arduino/verificar-conexion'), [
+                    'puerto' => $this->puerto
+                ]);
+
+            if ($response->successful()) {
+                $data = $response->json();
+                $this->estadoArduino = $data['conectado'] ? 'Disponible' : 'Desconectado';
+                
+                $this->mensaje = $data['conectado'] ? 
+                    '✅ ' . $data['mensaje'] : 
+                    '❌ ' . $data['mensaje'];
+                    
+                $this->dispatchBrowserEvent('notificacion', [
+                    'tipo' => $data['conectado'] ? 'success' : 'error',
+                    'mensaje' => $data['mensaje']
+                ]);
+            }
+        } catch (\Exception $e) {
+            $this->mensaje = '❌ Error al verificar conexión';
+            $this->estadoArduino = 'Error';
+        }
+    }
+
+    public function testComunicacion()
+    {
+        try {
+            $response = Http::withToken(auth()->user()->currentAccessToken()->token ?? '')
+                ->post(url('/api/arduino/test-comunicacion'), [
+                    'puerto' => $this->puerto,
+                    'comando' => 'T'
+                ]);
+
+            if ($response->successful()) {
+                $data = $response->json();
+                
+                $this->mensaje = $data['comunicacion_establecida'] ? 
+                    '✅ ' . $data['mensaje'] . ' Respuesta: ' . $data['respuesta'] : 
+                    '❌ ' . $data['mensaje'];
+                    
+                $this->dispatchBrowserEvent('notificacion', [
+                    'tipo' => $data['comunicacion_establecida'] ? 'success' : 'error',
+                    'mensaje' => $data['mensaje']
+                ]);
+            }
+        } catch (\Exception $e) {
+            $this->mensaje = '❌ Error en test de comunicación';
+        }
+    }
+
+    public function escanearPuertos()
+    {
+        try {
+            $response = Http::withToken(auth()->user()->currentAccessToken()->token ?? '')
+                ->get(url('/api/arduino/escanear-puertos'));
+
+            if ($response->successful()) {
+                $data = $response->json();
+                
+                if (!empty($data['puertos'])) {
+                    $this->mensaje = '✅ Found ' . $data['total'] . ' ports available';
+                    $this->dispatchBrowserEvent('puertosEscaneados', [
+                        'puertos' => $data['puertos']
+                    ]);
+                } else {
+                    $this->mensaje = '❌ No ports found';
+                }
+            }
+        } catch (\Exception $e) {
+            $this->mensaje = '❌ Error scanning ports';
+        }
+    }
+
     public function activarRiego()
     {
         // Prevenir activación si el modal está abierto
@@ -117,8 +198,9 @@ class RiegoControl extends Component
         }
 
         try {
+            // USAR LA RUTA CORRECTA SEGÚN TU API
             $response = Http::withToken(auth()->user()->currentAccessToken()->token ?? '')
-                ->post(url("/api/plantas/{$this->planta->id}/tareas/{$this->tarea->id}/activar-riego"), [
+                ->post(url("/api/arduino/activar-riego/{$this->planta->id}/{$this->tarea->id}"), [
                     'puerto' => $this->puerto,
                     'tiempo' => $this->tiempoRiego,
                     'cantidad_ml' => $this->cantidadMl

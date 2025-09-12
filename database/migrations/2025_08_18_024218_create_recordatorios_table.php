@@ -13,7 +13,15 @@ return new class extends Migration
     {
         Schema::create('recordatorios', function (Blueprint $table) {
             $table->id();
+            $table->foreignId('tarea_id')->constrained()->onDelete('cascade');
+            $table->dateTime('fecha_envio');
+            $table->boolean('enviado')->default(false);
             $table->timestamps();
+
+            // Índices para optimizar consultas
+            $table->index('tarea_id');
+            $table->index('fecha_envio');
+            $table->index('enviado');
         });
     }
 

@@ -10,7 +10,8 @@ use App\Http\Controllers\RegistroRiegoController;
 use App\Http\Controllers\ActividadController;
 use App\Http\Controllers\ArduinoController;
 use App\Http\Controllers\ArduinoConfigController;
-use App\Http\Controllers\ProfileController; // Añade esta línea
+use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\TareaCompletadaController;
 
 Route::get('/', function () {
     return view('welcome');
@@ -63,18 +64,6 @@ Route::middleware('guest')->group(function () {
     });
 });
 
-Route::prefix('plantas')->name('plantas.')->group(function () {
-    Route::prefix('{planta}')->group(function () {
-        Route::prefix('tareas')->name('tareas.')->group(function () {
-            Route::post('{tarea}/completar', [TareaController::class, 'completar'])
-                ->name('completar'); // Nombre: plantas.tareas.completar
-        });
-
-        // Verifica que el nombre sea exactamente 'plantas.tareas.completar'
-        Route::get('/ruta', [Controller::class, 'method'])->name('plantas.tareas.completar');
-    });
-});
-
 // ================= RUTAS PROTEGIDAS (AUTH) =================
 Route::middleware('auth')->group(function () {
     // Ruta de logout - SIMPLIFICADA
@@ -113,6 +102,14 @@ Route::middleware('auth')->group(function () {
         Route::post('/config/test', [ArduinoConfigController::class, 'testConnection'])->name('arduino.config.test');
     });
 
+    // Nuevas rutas para verificación de conexión Arduino (web)
+    Route::get('arduino/verificar', [ArduinoController::class, 'verificarConexionWeb'])
+        ->name('arduino.verificar');
+    Route::post('arduino/test', [ArduinoController::class, 'testComunicacionWeb'])
+        ->name('arduino.test');
+    Route::get('arduino/puertos', [ArduinoController::class, 'escanearPuertosWeb'])
+        ->name('arduino.puertos');
+
     // Rutas anidadas para Tareas
     Route::prefix('plantas/{planta}')->group(function () {
         Route::get('tareas', [TareaController::class, 'index'])->name('plantas.tareas.index');
@@ -125,6 +122,9 @@ Route::middleware('auth')->group(function () {
             Route::put('/', [TareaController::class, 'update'])->name('plantas.tareas.update');
             Route::delete('/', [TareaController::class, 'destroy'])->name('plantas.tareas.destroy');
             
+            // RUTA CORREGIDA - Usando TareaController en lugar de TareaCompletadaController
+            Route::post('completar', [TareaController::class, 'completar'])->name('plantas.tareas.completar');
+            
             // Registros de riego
             Route::prefix('registros')->group(function () {
                 Route::get('/', [RegistroRiegoController::class, 'index'])->name('plantas.tareas.registros.index');
@@ -134,12 +134,6 @@ Route::middleware('auth')->group(function () {
                 Route::prefix('{registroRiego}')->group(function () {
                     Route::get('/', [RegistroRiegoController::class, 'show'])->name('plantas.tareas.registros.show');
                     Route::delete('/', [RegistroRiegoController::class, 'destroy'])->name('plantas.tareas.registros.destroy');
-
-                    Route::get('actividades/tipo', [ActividadController::class, 'tipo'])->name('actividades.tipo');
-                    Route::get('actividades/tipo/{tipo}', [ActividadController::class, 'filtrarPorTipo'])
-                        ->name('actividades.filtrar.tipo');
-
-                    Route::get('estadisticas', [EstadisticaController::class, 'index'])->name('estadisticas.index');
                 });
             });
         });
