@@ -2,24 +2,26 @@
 
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Http\Request;
 use App\Models\User;
 use App\Http\Controllers\PlantaController;
 use App\Http\Controllers\TareaController;
+use App\Http\Controllers\TareaCompletadaController;
 use App\Http\Controllers\RegistroRiegoController;
 use App\Http\Controllers\ActividadController;
+use App\Http\Controllers\EstadisticaController;
 use App\Http\Controllers\ArduinoController;
 use App\Http\Controllers\ArduinoConfigController;
 use App\Http\Controllers\ProfileController;
-use App\Http\Controllers\TareaCompletadaController;
 
+// ================= RUTA PÚBLICA PRINCIPAL =================
 Route::get('/', function () {
     return view('welcome');
 });
 
 // ================= RUTAS PÚBLICAS (GUEST) =================
 Route::middleware('guest')->group(function () {
-    // Ruta de registro - SIMPLIFICADA
     Route::get('/register', function () {
         return view('auth.register');
     })->name('register');
@@ -38,11 +40,9 @@ Route::middleware('guest')->group(function () {
         ]);
 
         Auth::login($user);
-
         return redirect()->route('plantas.index')->with('success', '¡Cuenta creada exitosamente!');
     });
 
-    // Ruta de login - SIMPLIFICADA
     Route::get('/login', function () {
         return view('auth.login');
     })->name('login');
@@ -66,7 +66,7 @@ Route::middleware('guest')->group(function () {
 
 // ================= RUTAS PROTEGIDAS (AUTH) =================
 Route::middleware('auth')->group(function () {
-    // Ruta de logout - SIMPLIFICADA
+    // Logout
     Route::post('/logout', function (Request $request) {
         Auth::logout();
         $request->session()->invalidate();
@@ -74,7 +74,7 @@ Route::middleware('auth')->group(function () {
         return redirect('/')->with('success', 'Sesión cerrada correctamente');
     })->name('logout');
 
-    // RUTA DE PERFIL - AÑADIDA
+    // Perfil
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
@@ -84,58 +84,87 @@ Route::middleware('auth')->group(function () {
         return view('dashboard');
     })->name('dashboard');
 
-    // Rutas para Plantas
+    // Estadísticas
+    Route::get('/estadisticas', [EstadisticaController::class, 'index'])->name('estadisticas.index');
+    Route::get('/api/estadisticas/json', [EstadisticaController::class, 'getEstadisticasJson'])->name('estadisticas.json');
+    Route::get('/estadisticas/exportar', [EstadisticaController::class, 'exportarDatos'])->name('estadisticas.exportar');
+
+    // Plantas
     Route::resource('plantas', PlantaController::class);
-    
-    // Actividades
-    Route::get('actividades', [ActividadController::class, 'index'])->name('actividades.index');
-    Route::get('plantas/{planta}/actividades', [ActividadController::class, 'porPlanta'])->name('plantas.actividades');
-    
-    // Arduino
-    Route::post('plantas/{planta}/tareas/{tarea}/activar-riego', [ArduinoController::class, 'activarRiego'])->name('arduino.activar-riego');
-    Route::get('api/arduino/estado', [ArduinoController::class, 'estadoArduino'])->name('arduino.estado');
-    
-    // Rutas para configuración de Arduino
-    Route::prefix('arduino')->group(function () {
-        Route::get('/config', [ArduinoConfigController::class, 'index'])->name('arduino.config');
-        Route::post('/config/save', [ArduinoConfigController::class, 'saveConfig'])->name('arduino.config.save');
-        Route::post('/config/test', [ArduinoConfigController::class, 'testConnection'])->name('arduino.config.test');
+
+    // Actividades - RUTAS ACTUALIZADAS (MANTENER COMPATIBILIDAD)
+    Route::get('/actividades', [ActividadController::class, 'index'])->name('actividades.index');
+    Route::get('/actividades/tipo/{tipo}', [ActividadController::class, 'filtrarPorTipo'])->name('actividades.filtrar'); // Nueva ruta para filtros
+    Route::get('/actividades/por-tipo/{tipo}', [ActividadController::class, 'porTipo'])->name('actividades.tipo'); // Mantener ruta existente para compatibilidad
+    Route::get('/plantas/{planta}/actividades', [ActividadController::class, 'porPlanta'])->name('plantas.actividades');
+
+    // Arduino configuración
+    Route::prefix('arduino')->name('arduino.')->group(function () {
+        // Configuración existente
+        Route::get('/config', [ArduinoConfigController::class, 'index'])->name('config');
+        Route::post('/config/save', [ArduinoConfigController::class, 'saveConfig'])->name('config.save');
+        Route::post('/config/test', [ArduinoConfigController::class, 'testConnection'])->name('config.test');
+        
+        // Rutas existentes
+        Route::get('/verificar', [ArduinoController::class, 'verificarConexionWeb'])->name('verificar');
+        Route::post('/test', [ArduinoController::class, 'testComunicacionWeb'])->name('test');
+        Route::get('/puertos', [ArduinoController::class, 'escanearPuertosWeb'])->name('puertos');
+        
+        // Rutas adicionales existentes
+        Route::get('/escanear-puertos', [ArduinoController::class, 'escanearPuertosWeb'])->name('escanear-puertos');
+        Route::get('/verificar-conexion', [ArduinoController::class, 'verificarConexionWeb'])->name('verificar-conexion');
+        
+        // Rutas existentes adicionales
+        Route::post('/config/guardar', [ArduinoConfigController::class, 'saveConfig'])->name('config.guardar');
+        Route::post('/configuracion', [ArduinoController::class, 'guardarConfiguracion'])->name('configuracion');
+        
+        // NUEVAS RUTAS PARA SOPORTAR MÚLTIPLES PUERTOS (AÑADIDAS)
+        Route::get('/puertos-extendidos', [ArduinoController::class, 'obtenerPuertosExtendidosWeb'])
+            ->name('puertos-extendidos');
+        Route::post('/verificar-multi', [ArduinoController::class, 'verificarConexionMultiWeb'])
+            ->name('verificar-multi');
     });
 
-    // Nuevas rutas para verificación de conexión Arduino (web)
-    Route::get('arduino/verificar', [ArduinoController::class, 'verificarConexionWeb'])
-        ->name('arduino.verificar');
-    Route::post('arduino/test', [ArduinoController::class, 'testComunicacionWeb'])
-        ->name('arduino.test');
-    Route::get('arduino/puertos', [ArduinoController::class, 'escanearPuertosWeb'])
-        ->name('arduino.puertos');
+    // Arduino riego
+    Route::post('/plantas/{planta}/tareas/{tarea}/activar-riego', [ArduinoController::class, 'activarRiego'])
+        ->name('arduino.activar-riego');
+    Route::get('/api/arduino/estado', [ArduinoController::class, 'estadoArduino'])
+        ->name('arduino.estado');
 
-    // Rutas anidadas para Tareas
-    Route::prefix('plantas/{planta}')->group(function () {
-        Route::get('tareas', [TareaController::class, 'index'])->name('plantas.tareas.index');
-        Route::get('tareas/create', [TareaController::class, 'create'])->name('plantas.tareas.create');
-        Route::post('tareas', [TareaController::class, 'store'])->name('plantas.tareas.store');
-        
-        Route::prefix('tareas/{tarea}')->group(function () {
-            Route::get('/', [TareaController::class, 'show'])->name('plantas.tareas.show');
-            Route::get('edit', [TareaController::class, 'edit'])->name('plantas.tareas.edit');
-            Route::put('/', [TareaController::class, 'update'])->name('plantas.tareas.update');
-            Route::delete('/', [TareaController::class, 'destroy'])->name('plantas.tareas.destroy');
-            
-            // RUTA CORREGIDA - Usando TareaController en lugar de TareaCompletadaController
-            Route::post('completar', [TareaController::class, 'completar'])->name('plantas.tareas.completar');
-            
+    // Tareas y registros (anidadas en plantas)
+    Route::prefix('plantas/{planta}')->name('plantas.')->group(function () {
+        Route::get('/tareas', [TareaController::class, 'index'])->name('tareas.index');
+        Route::get('/tareas/create', [TareaController::class, 'create'])->name('tareas.create');
+        Route::post('/tareas', [TareaController::class, 'store'])->name('tareas.store');
+
+        Route::prefix('tareas/{tarea}')->name('tareas.')->group(function () {
+            Route::get('/', [TareaController::class, 'show'])->name('show');
+            Route::get('/edit', [TareaController::class, 'edit'])->name('edit');
+            Route::put('/', [TareaController::class, 'update'])->name('update');
+            Route::delete('/', [TareaController::class, 'destroy'])->name('destroy');
+
+            // Completar tareas (RUTA AÑADIDA)
+            Route::patch('/completar', [TareaController::class, 'completar'])->name('completar');
+            Route::post('/completar', [TareaCompletadaController::class, 'store'])->name('completar.store');
+
             // Registros de riego
-            Route::prefix('registros')->group(function () {
-                Route::get('/', [RegistroRiegoController::class, 'index'])->name('plantas.tareas.registros.index');
-                Route::get('create', [RegistroRiegoController::class, 'create'])->name('plantas.tareas.registros.create');
-                Route::post('/', [RegistroRiegoController::class, 'store'])->name('plantas.tareas.registros.store');
-                
+            Route::prefix('registros')->name('registros.')->group(function () {
+                Route::get('/', [RegistroRiegoController::class, 'index'])->name('index');
+                Route::get('/create', [RegistroRiegoController::class, 'create'])->name('create');
+                Route::post('/', [RegistroRiegoController::class, 'store'])->name('store');
+
                 Route::prefix('{registroRiego}')->group(function () {
-                    Route::get('/', [RegistroRiegoController::class, 'show'])->name('plantas.tareas.registros.show');
-                    Route::delete('/', [RegistroRiegoController::class, 'destroy'])->name('plantas.tareas.registros.destroy');
+                    Route::get('/', [RegistroRiegoController::class, 'show'])->name('show');
+                    Route::delete('/', [RegistroRiegoController::class, 'destroy'])->name('destroy');
                 });
             });
         });
     });
+
+    // RUTAS ADICIONALES AÑADIDAS
+    Route::patch('/tareas/{tarea}/completar', [TareaController::class, 'completar'])->name('tareas.completar');
+    Route::get('/plantas/{planta}/tareas/{tarea}', [TareaController::class, 'show'])->name('plantas.tareas.show');
+    Route::get('/plantas/{planta}/tareas/{tarea}/edit', [TareaController::class, 'edit'])->name('plantas.tareas.edit');
+    Route::delete('/plantas/{planta}/tareas/{tarea}', [TareaController::class, 'destroy'])->name('plantas.tareas.destroy');
+    Route::get('/plantas/{planta}/tareas/create', [TareaController::class, 'create'])->name('plantas.tareas.create');
 });

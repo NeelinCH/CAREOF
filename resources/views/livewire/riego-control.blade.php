@@ -1,22 +1,71 @@
-<div class="bg-white p-6 rounded-lg shadow-md" wire:key="componente-principal">
-    <h3 class="text-lg font-semibold mb-4 flex items-center">
-        <i class="fas fa-microchip mr-2 text-blue-500"></i>
-        Control de Riego Automático
-    </h3>
-    
-    <!-- Mensajes de estado -->
+<div class="bg-gradient-to-r from-blue-50 to-green-50 p-6 rounded-xl border border-blue-200 shadow-lg">
+    <!-- Mensaje de advertencia añadido aquí -->
+    <div class="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+        <div class="flex items-start">
+            <div class="flex-shrink-0">
+                <i class="fas fa-exclamation-triangle text-yellow-500 text-xl mr-3"></i>
+            </div>
+            <div>
+                <h5 class="font-bold text-yellow-700 mb-1">Importante: Conexión Arduino en desarrollo</h5>
+                <p class="text-yellow-600 text-sm">La funcionalidad de conexión con Arduino se encuentra actualmente en etapa de desarrollo y puede presentar fallos o comportamientos inesperados. Te recomendamos utilizar esta característica teniendo en cuenta la presente aclaración.</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="flex items-center justify-between mb-6">
+        <h4 class="font-bold text-xl flex items-center text-blue-700">
+            <i class="fas fa-microchip mr-3 text-2xl"></i> 
+            Control Arduino - Riego Automático
+        </h4>
+        
+        <!-- Estado de conexión -->
+        <div class="flex items-center space-x-3">
+            @if($verificandoConexion)
+                <div class="flex items-center text-yellow-600">
+                    <i class="fas fa-spinner fa-spin mr-2"></i>
+                    <span class="text-sm font-medium">Verificando...</span>
+                </div>
+            @else
+                <div class="flex items-center {{ $conectado ? 'text-green-600' : 'text-red-600' }}">
+                    <div class="w-3 h-3 rounded-full {{ $conectado ? 'bg-green-500' : 'bg-red-500' }} animate-pulse mr-2"></div>
+                    <span class="text-sm font-medium">{{ $conectado ? 'Conectado' : 'Desconectado' }}</span>
+                </div>
+            @endif
+            
+            <button wire:click="verificarConexion" 
+                    wire:loading.attr="disabled"
+                    class="inline-flex items-center px-3 py-1 bg-blue-600 text-white rounded-md text-xs hover:bg-blue-700 transition disabled:opacity-50">
+                <i class="fas fa-sync-alt mr-1 {{ $verificandoConexion ? 'fa-spin' : '' }}"></i>
+                Verificar
+            </button>
+        </div>
+    </div>
+
+    <!-- Mensajes -->
     @if($mensaje)
-        <div class="mb-4 p-3 rounded 
-            {{ strpos($mensaje, '✅') === 0 ? 'bg-green-100 text-green-700 border border-green-200' : 
-               'bg-red-100 text-red-700 border border-red-200' }}">
+        <div class="mb-4 p-3 rounded-lg border {{ 
+            $tipoMensaje === 'success' ? 'bg-green-50 border-green-200 text-green-800' : 
+            ($tipoMensaje === 'error' ? 'bg-red-50 border-red-200 text-red-800' : 
+            ($tipoMensaje === 'warning' ? 'bg-yellow-50 border-yellow-200 text-yellow-800' : 
+            'bg-blue-50 border-blue-200 text-blue-800'))
+        }}">
             <div class="flex items-center justify-between">
-                <span>{{ $mensaje }}</span>
-                <button wire:click="$set('mensaje', '')" class="text-gray-500 hover:text-gray-700">
+                <div class="flex items-center">
+                    <i class="fas {{ 
+                        $tipoMensaje === 'success' ? 'fa-check-circle' : 
+                        ($tipoMensaje === 'error' ? 'fa-exclamation-triangle' : 
+                        ($tipoMensaje === 'warning' ? 'fa-exclamation-circle' : 'fa-info-circle'))
+                    }} mr-2"></i>
+                    <span class="text-sm font-medium">{{ $mensaje }}</span>
+                </div>
+                <button wire:click="cerrarMensaje" 
+                        class="text-gray-400 hover:text-gray-600 ml-2"
+                        title="Cerrar mensaje">
                     <i class="fas fa-times"></i>
                 </button>
             </div>
             @if($ultimaAccion)
-                <div class="text-sm mt-1">
+                <div class="text-sm mt-1 opacity-75">
                     Última acción: {{ $ultimaAccion }}
                 </div>
             @endif
@@ -24,247 +73,224 @@
     @endif
 
     <!-- Estado del Arduino -->
-    <div class="mb-4 p-3 rounded 
-        {{ $estadoArduino === 'Disponible' ? 'bg-green-100 text-green-700 border border-green-200' : 
-           'bg-red-100 text-red-700 border border-red-200' }}">
-        <div class="flex items-center">
-            <i class="fas {{ $estadoArduino === 'Disponible' ? 'fa-check-circle' : 'fa-exclamation-triangle' }} mr-2"></i>
-            <span class="font-medium">Estado Arduino:</span>
-            <span class="ml-2">{{ $estadoArduino }}</span>
-        </div>
-    </div>
-
-    <!-- Botones de verificación de conexión -->
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
-        <button wire:click="verificarConexion" 
-                wire:loading.attr="disabled"
-                class="bg-green-500 hover:bg-green-600 text-white py-2 px-3 rounded text-sm transition duration-200 disabled:opacity-50">
-            <i class="fas fa-plug mr-1"></i> Verificar Conexión
-        </button>
-        
-        <button wire:click="testComunicacion" 
-                wire:loading.attr="disabled"
-                class="bg-blue-500 hover:bg-blue-600 text-white py-2 px-3 rounded text-sm transition duration-200 disabled:opacity-50">
-            <i class="fas fa-comment-alt mr-1"></i> Test Comunicación
-        </button>
-        
-        <button wire:click="escanearPuertos" 
-                wire:loading.attr="disabled"
-                class="bg-gray-500 hover:bg-gray-600 text-white py-2 px-3 rounded text-sm transition duration-200 disabled:opacity-50">
-            <i class="fas fa-search mr-1"></i> Escanear Puertos
-        </button>
-    </div>
-
-    <!-- Configuración actual -->
-    <div class="mb-4 bg-gray-50 p-4 rounded-lg">
-        <h4 class="font-medium text-gray-700 mb-2">Configuración Actual</h4>
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-2 text-sm">
-            <div>
-                <span class="font-medium">Puerto:</span>
-                <span class="block text-blue-600">{{ $puerto }}</span>
+    <div class="mb-4 p-3 rounded transition-all duration-300 border
+        {{ $estadoArduino === 'Disponible' ? 'bg-blue-50 text-blue-700 border-blue-100' : 
+           ($estadoArduino === 'Comunicación OK' ? 'bg-green-50 text-green-700 border-green-100' :
+           ($estadoArduino === 'Regando...' ? 'bg-orange-50 text-orange-700 border-orange-100' :
+           ($estadoArduino === 'Riego completado' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' :
+           'bg-gray-100 text-gray-700 border-gray-200'))) }}">
+        <div class="flex items-center justify-between">
+            <div class="flex items-center">
+                <div class="flex items-center {{ $conectado ? 'text-green-600' : 'text-red-600' }}">
+                    <div class="w-3 h-3 rounded-full {{ $conectado ? 'bg-green-500' : 'bg-red-500' }} 
+                        {{ $regando ? 'animate-pulse' : '' }} mr-2"></div>
+                    <span class="text-sm font-medium">Estado: {{ $estadoArduino }}</span>
+                </div>
             </div>
-            <div>
-                <span class="font-medium">Tiempo:</span>
-                <span class="block text-blue-600">{{ number_format($tiempoRiego) }} ms</span>
-            </div>
-            <div>
-                <span class="font-medium">Cantidad:</span>
-                <span class="block text-blue-600">{{ number_format($cantidadMl) }} ml</span>
+            <div class="text-xs opacity-75">
+                Puerto: {{ $puertoSeleccionado ?? 'No seleccionado' }}
             </div>
         </div>
     </div>
 
-    <!-- Botones de acción PRINCIPALES (fuera del modal) -->
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4" wire:key="botones-principales">
-        <button wire:click="activarRiego" 
-                wire:loading.attr="disabled"
-                wire:key="boton-activar"
-                class="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-4 rounded flex items-center justify-center transition duration-200 disabled:opacity-50"
-                {{ $estadoArduino !== 'Disponible' ? 'disabled' : '' }}
-                {{ $mostrarConfiguracion ? 'disabled' : '' }}>
-            <i class="fas fa-play-circle mr-2"></i> 
-            <span wire:loading.remove>Activar Riego</span>
-            <span wire:loading>Activando...</span>
-        </button>
+    <!-- Configuración de Puerto -->
+    <div class="bg-white p-4 rounded-lg border border-gray-200 mb-4">
+        <h5 class="font-semibold text-gray-800 mb-3 flex items-center">
+            <i class="fas fa-cog mr-2 text-gray-600"></i>
+            Configuración del Puerto
+        </h5>
         
-        <button wire:click="abrirConfiguracion"
-                wire:key="boton-configurar"
-                class="w-full bg-gray-500 hover:bg-gray-600 text-white font-bold py-3 px-4 rounded flex items-center justify-center transition duration-200"
-                {{ $mostrarConfiguracion ? 'disabled' : '' }}>
-            <i class="fas fa-cog mr-2"></i> Configurar
-        </button>
-    </div>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+        <!-- Selector de puerto -->
+<div>
+    <label class="block text-sm font-medium text-gray-700 mb-1">Puerto Serie</label>
+    <select wire:model="puertoSeleccionado" 
+            class="w-full rounded border-gray-300 shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500">
+        <option value="">Seleccionar puerto...</option>
+        @foreach($puertosDisponibles as $puerto)
+            <option value="{{ $puerto['puerto'] }}">
+                {{ $puerto['puerto'] }} - {{ $puerto['descripcion'] }}
+            </option>
+        @endforeach
+        <!-- Opciones adicionales -->
+    </select>
+    @error('puertoSeleccionado')
+        <span class="text-red-500 text-xs mt-1">{{ $message }}</span>
+    @enderror
+</div>
 
-    <!-- Modal de configuración -->
-    @if($mostrarConfiguracion)
-    <div class="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50 p-4" 
-         wire:click="cancelarConfiguracion"> <!-- Cerrar al hacer clic fuera -->
-        <div class="bg-white p-6 rounded-lg shadow-xl max-w-md w-full mx-4 max-h-[90vh] overflow-y-auto" 
-             wire:click.stop> <!-- Prevenir propagación dentro del modal -->
-             
-            <div class="flex items-center justify-between mb-4">
-                <h4 class="text-lg font-semibold">Configuración de Arduino</h4>
-                <button wire:click="cancelarConfiguracion" 
+            <!-- Botón escanear puertos -->
+            <div class="flex flex-col justify-end">
+                <button wire:click="escanearPuertos" 
                         wire:loading.attr="disabled"
-                        class="text-gray-500 hover:text-gray-700 disabled:opacity-50">
-                    <i class="fas fa-times"></i>
+                        class="w-full bg-gray-600 hover:bg-gray-700 text-white font-medium py-2 px-4 rounded transition disabled:opacity-50 flex items-center justify-center">
+                    <i class="fas {{ $escaneandoPuertos ? 'fa-spinner fa-spin' : 'fa-search' }} mr-2"></i>
+                    {{ $escaneandoPuertos ? 'Escaneando...' : 'Escanear Puertos' }}
                 </button>
+            </div>
+
+            <!-- Botón test comunicación -->
+            <div class="flex flex-col justify-end">
+                <button wire:click="testComunicacion" 
+                        wire:loading.attr="disabled"
+                        class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 px-4 rounded transition disabled:opacity-50 flex items-center justify-center">
+                    <i class="fas fa-vial mr-2"></i>
+                    Test Comunicación
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Configuración del Riego -->
+    <div class="bg-white p-4 rounded-lg border border-gray-200 mb-4">
+        <h5 class="font-semibold text-gray-800 mb-3 flex items-center">
+            <i class="fas fa-sliders-h mr-2 text-gray-600"></i>
+            Configuración del Riego
+        </h5>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <!-- Cantidad de agua -->
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">
+                    Cantidad de Agua (ml)
+                    <span class="text-gray-500 text-xs">(50-5000ml)</span>
+                </label>
+                <div class="relative">
+                    <input type="number" 
+                           wire:model="cantidadMl" 
+                           min="50" 
+                           max="5000" 
+                           step="50"
+                           class="w-full rounded border-gray-300 shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 pr-12">
+                    <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                        <span class="text-gray-500 text-sm">ml</span>
+                    </div>
+                </div>
+                @error('cantidadMl')
+                    <span class="text-red-500 text-xs mt-1">{{ $message }}</span>
+                @enderror
+            </div>
+
+            <!-- Tiempo de riego -->
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">
+                    Tiempo de Riego (ms)
+                    <span class="text-gray-500 text-xs">(1000-30000ms)</span>
+                </label>
+                <div class="relative">
+                    <input type="number" 
+                           wire:model="tiempoRiego" 
+                           min="1000" 
+                           max="30000" 
+                           step="500"
+                           class="w-full rounded border-gray-300 shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 pr-12">
+                    <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                        <span class="text-gray-500 text-sm">ms</span>
+                    </div>
+                </div>
+                @error('tiempoRiego')
+                    <span class="text-red-500 text-xs mt-1">{{ $message }}</span>
+                @enderror
+                <div class="text-xs text-gray-500 mt-1">
+                    ≈ {{ round($tiempoRiego / 1000, 1) }} segundos
+                </div>
+            </div>
+        </div>
+
+        <!-- Valores predefinidos -->
+        <div class="mt-3">
+            <label class="block text-sm font-medium text-gray-700 mb-2">Configuraciones rápidas:</label>
+            <div class="flex flex-wrap gap-2">
+                <button type="button" 
+                        wire:click="$set('cantidadMl', 250); $set('tiempoRiego', 1500)"
+                        class="px-3 py-1 bg-green-100 text-green-800 rounded text-xs hover:bg-green-200 transition">
+                    Ligero (250ml)
+                </button>
+                <button type="button" 
+                        wire:click="$set('cantidadMl', 500); $set('tiempoRiego', 2000)"
+                        class="px-3 py-1 bg-blue-100 text-blue-800 rounded text-xs hover:bg-blue-200 transition">
+                    Normal (500ml)
+                </button>
+                <button type="button" 
+                        wire:click="$set('cantidadMl', 1000); $set('tiempoRiego', 3000)"
+                        class="px-3 py-1 bg-orange-100 text-orange-800 rounded text-xs hover:bg-orange-200 transition">
+                    Abundante (1000ml)
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Botón de Activar Riego -->
+    <div class="bg-white p-4 rounded-lg border border-gray-200">
+        <div class="flex items-center justify-between">
+            <div>
+                <h5 class="font-semibold text-gray-800 flex items-center">
+                    <i class="fas fa-play-circle mr-2 text-green-600"></i>
+                    Activar Riego Automático
+                </h5>
+                <p class="text-sm text-gray-600 mt-1">
+                    Se regará con <strong>{{ $cantidadMl }}ml</strong> durante <strong>{{ round($tiempoRiego / 1000, 1) }}s</strong>
+                </p>
             </div>
             
-            <div class="space-y-4">
-                <!-- Puerto COM -->
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Puerto COM *</label>
-                    <select wire:model="puertoTemp" 
-                            wire:loading.attr="disabled"
-                            class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 disabled:opacity-50">
-                        <option value="">Seleccionar puerto...</option>
-                        <option value="COM9">COM9</option>
-                        <option value="COM10">COM10</option>
-                        <option value="COM3">COM3</option>
-                        <option value="COM4">COM4</option>
-                        <option value="COM5">COM5</option>
-                        <option value="COM6">COM6</option>
-                    </select>
-                    @error('puertoTemp') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
-                </div>
-                
-                <!-- Tiempo de riego -->
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">
-                        Tiempo de riego (milisegundos) *
-                    </label>
-                    <input type="number" wire:model="tiempoRiegoTemp" 
-                           wire:loading.attr="disabled"
-                           min="100" max="10000" step="100" 
-                           class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 disabled:opacity-50">
-                    @error('tiempoRiegoTemp') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
-                    <p class="text-xs text-gray-500 mt-1">1000 ms = 1 segundo</p>
-                </div>
-                
-                <!-- Cantidad de agua -->
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">
-                        Cantidad estimada de agua (ml) *
-                    </label>
-                    <input type="number" wire:model="cantidadMlTemp" 
-                           wire:loading.attr="disabled"
-                           min="1" max="5000" step="10"
-                           class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 disabled:opacity-50">
-                    @error('cantidadMlTemp') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
-                    <p class="text-xs text-gray-500 mt-1">1000 ml = 1 litro</p>
-                </div>
-            </div>
-
-            <!-- Botones de acción del modal -->
-            <div class="flex justify-end space-x-3 mt-6 pt-4 border-t border-gray-200">
-                <button wire:click="cancelarConfiguracion" 
-                        wire:loading.attr="disabled"
-                        class="px-4 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400 transition duration-200 disabled:opacity-50">
-                    <i class="fas fa-times mr-1"></i> Cancelar
+            <div class="flex items-center space-x-3">
+                <button wire:click="resetForm" 
+                        type="button"
+                        class="px-4 py-2 bg-gray-500 hover:bg-gray-600 text-white font-medium rounded transition">
+                    <i class="fas fa-undo mr-2"></i>
+                    Resetear
                 </button>
-                <button wire:click="guardarConfiguracion" 
+                
+                <button wire:click="activarRiego" 
                         wire:loading.attr="disabled"
-                        class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition duration-200 disabled:opacity-50">
-                    <i class="fas fa-save mr-1"></i> Guardar
+                        {{ !$conectado || !$puertoSeleccionado ? 'disabled' : '' }}
+                        class="px-6 py-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white font-semibold rounded-lg transition flex items-center">
+                    @if($regando)
+                        <i class="fas fa-spinner fa-spin mr-2"></i>
+                        Regando...
+                    @else
+                        <i class="fas fa-tint mr-2"></i>
+                        Activar Riego
+                    @endif
                 </button>
             </div>
         </div>
+
+        @if(!$conectado)
+            <div class="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg">
+                <div class="flex items-center text-red-700">
+                    <i class="fas fa-exclamation-triangle mr-2"></i>
+                    <span class="text-sm">Arduino no conectado. Verifica la conexión y el puerto seleccionado.</span>
+                </div>
+            </div>
+        @elseif(!$puertoSeleccionado)
+            <div class="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                <div class="flex items-center text-yellow-700">
+                    <i class="fas fa-exclamation-circle mr-2"></i>
+                    <span class="text-sm">Selecciona un puerto para continuar.</span>
+                </div>
+            </div>
+        @endif
     </div>
-    @endif
 </div>
 
 @push('scripts')
 <script>
-// Escuchar eventos de Livewire
-document.addEventListener('livewire:load', function() {
-    // Prevenir que los clics dentro del modal se propaguen
-    document.addEventListener('click', function(e) {
-        const modal = document.querySelector('[wire\\:click="cancelarConfiguracion"]');
-        const modalContent = document.querySelector('.bg-white.p-6.rounded-lg');
+document.addEventListener('DOMContentLoaded', function() {
+    // Escuchar evento de riego completado
+    window.addEventListener('riego-completado', event => {
+        // Mostrar notificación
+        if (typeof toastr !== 'undefined') {
+            toastr.success(event.detail.message);
+        }
         
-        if (modal && modalContent && modal.contains(e.target) && !modalContent.contains(e.target)) {
-            Livewire.dispatch('cancelarConfiguracion');
-        }
-    });
-
-    // Deshabilitar botones principales cuando el modal está abierto
-    Livewire.on('mostrarConfiguracionUpdated', (value) => {
-        const botones = document.querySelectorAll('button[wire\\:key="boton-activar"], button[wire\\:key="boton-configurar"]');
-        botones.forEach(boton => {
-            if (value) {
-                boton.setAttribute('disabled', 'disabled');
-                boton.classList.add('opacity-50');
-            } else {
-                boton.removeAttribute('disabled');
-                boton.classList.remove('opacity-50');
-            }
-        });
-    });
-    
-    // Limpiar mensaje después de tiempo
-    Livewire.on('limpiarMensaje', () => {
+        // Opcional: recargar la página después de 3 segundos
         setTimeout(() => {
-            // Esta función debe ser implementada en tu componente si es necesaria
-            console.log('Limpiar mensaje automático');
-        }, 2000);
-    });
-    
-    // Notificaciones
-    Livewire.on('notificacion', (data) => {
-        showNotification(data.mensaje, data.tipo);
-    });
-
-    // Escuchar evento de puertos escaneados
-    Livewire.on('puertosEscaneados', (data) => {
-        if (data.puertos && data.puertos.length > 0) {
-            // Actualizar el selector de puertos
-            const selector = document.querySelector('select[wire\\:model="puertoTemp"]');
-            if (selector) {
-                // Mantener la opción actual si existe
-                const currentValue = selector.value;
-                
-                // Limpiar opciones excepto la primera
-                while (selector.options.length > 1) {
-                    selector.remove(1);
-                }
-                
-                // Agregar puertos encontrados
-                data.puertos.forEach(puerto => {
-                    const option = document.createElement('option');
-                    option.value = puerto;
-                    option.textContent = puerto;
-                    selector.appendChild(option);
-                });
-                
-                // Restaurar valor anterior si existe en los nuevos puertos
-                if (data.puertos.includes(currentValue)) {
-                    selector.value = currentValue;
-                }
+            if (confirm('¿Deseas recargar la página para ver el registro actualizado?')) {
+                window.location.reload();
             }
-            
-            showNotification('Found ' + data.puertos.length + ' available ports', 'success');
-        }
+        }, 3000);
     });
 });
-
-// También puedes agregar este código para mayor seguridad
-document.addEventListener('click', function(e) {
-    // Si el clic fue en un botón dentro del modal, detener la propagación
-    if (e.target.closest('.bg-white.p-6.rounded-lg')) {
-        e.stopPropagation();
-    }
-});
-
-// Función para mostrar notificaciones (debe estar definida en el layout principal)
-function showNotification(message, type = 'success') {
-    // Esta función debe estar definida en tu layout principal
-    if (typeof window.showNotification === 'function') {
-        window.showNotification(message, type);
-    } else {
-        // Implementación básica de respaldo
-        alert(`${type.toUpperCase()}: ${message}`);
-    }
-}
 </script>
 @endpush

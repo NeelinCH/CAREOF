@@ -40,7 +40,7 @@
                     </x-slot>
 
                     <x-slot name="content">
-                       <x-dropdown-link :href="route('plantas.index')">
+                       <x-dropdown-link :href="route('profile.edit')">
     <i class="fas fa-user mr-2"></i> Mi Perfil
 </x-dropdown-link>
 

@@ -41,6 +41,10 @@ trait RegistraActividad
             'RegistroRiego' => 'riego'
         ];
 
+  if ($event === 'completed') {
+        $descripciones['completed'] = 'completó';
+    }
+
         $modelClass = class_basename($this);
         
         // Obtener el ID de la planta según el tipo de modelo

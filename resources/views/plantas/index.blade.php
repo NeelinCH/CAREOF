@@ -33,16 +33,15 @@
                         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                             @foreach($plantas as $planta)
                                 <div class="bg-white rounded-lg shadow-md overflow-hidden border border-gray-200 hover:shadow-lg transition-shadow duration-300">
-                                    <!-- Reemplazar la sección de imagen en la tarjeta: -->
-@if($planta->imagen)
-    <img src="{{ asset('storage/' . $planta->imagen) }}" 
-         alt="{{ $planta->nombre }}" 
-         class="w-full h-48 object-cover">
-@else
-    <div class="w-full h-48 bg-gray-100 flex items-center justify-center">
-        <i class="fas fa-leaf text-gray-400 text-5xl"></i>
-    </div>
-@endif
+                                    @if($planta->imagen)
+                                        <img src="{{ asset('storage/' . $planta->imagen) }}" 
+                                             alt="{{ $planta->nombre }}" 
+                                             class="w-full h-48 object-cover">
+                                    @else
+                                        <div class="w-full h-48 bg-gray-100 flex items-center justify-center">
+                                            <i class="fas fa-leaf text-gray-400 text-5xl"></i>
+                                        </div>
+                                    @endif
                                     <div class="p-4">
                                         <h4 class="font-bold text-xl mb-2">{{ $planta->nombre }}</h4>
                                         <p class="text-gray-700 mb-1"><strong>Especie:</strong> {{ $planta->especie }}</p>
@@ -50,16 +49,20 @@
                                         <p class="text-gray-700 mb-3"><strong>Tareas:</strong> {{ $planta->tareas_count }}</p>
                                         
                                         <div class="flex justify-between items-center">
-                                            <a href="{{ route('plantas.show', $planta->id) }}" class="text-sm bg-blue-500 hover:bg-blue-700 text-white py-1 px-3 rounded">
+                                            <a href="{{ route('plantas.show', $planta->id) }}" 
+                                               class="text-sm bg-blue-500 hover:bg-blue-700 text-white py-2 px-4 rounded flex items-center justify-center">
                                                 <i class="fas fa-eye mr-1"></i> Ver
                                             </a>
-                                            <a href="{{ route('plantas.edit', $planta->id) }}" class="text-sm bg-yellow-500 hover:bg-yellow-700 text-white py-1 px-3 rounded">
+                                            <a href="{{ route('plantas.edit', $planta->id) }}" 
+                                               class="text-sm bg-yellow-500 hover:bg-yellow-700 text-white py-2 px-4 rounded flex items-center justify-center">
                                                 <i class="fas fa-edit mr-1"></i> Editar
                                             </a>
                                             <form action="{{ route('plantas.destroy', $planta->id) }}" method="POST" class="inline">
                                                 @csrf
                                                 @method('DELETE')
-                                                <button type="submit" class="text-sm bg-red-500 hover:bg-red-700 text-white py-1 px-3 rounded" onclick="return confirm('¿Estás seguro de eliminar esta planta?')">
+                                                <button type="submit" 
+                                                        class="text-sm bg-red-500 hover:bg-red-700 text-white py-2 px-4 rounded flex items-center justify-center" 
+                                                        onclick="return confirm('¿Estás seguro de eliminar esta planta?')">
                                                     <i class="fas fa-trash mr-1"></i> Eliminar
                                                 </button>
                                             </form>

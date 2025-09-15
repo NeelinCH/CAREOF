@@ -2,8 +2,10 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Planta;
 use App\Models\Tarea;
+use App\Models\Planta;
+use App\Models\RegistroRiego;
+use App\Models\Actividad;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -12,7 +14,6 @@ class TareaController extends Controller
 {
     public function index(Planta $planta)
     {
-        // Verificar autorización usando Gate
         if (!Auth::user()->can('view', $planta)) {
             throw new AuthorizationException('No tienes permisos para ver las tareas de esta planta.');
         }
@@ -23,7 +24,6 @@ class TareaController extends Controller
 
     public function create(Planta $planta)
     {
-        // Verificar autorización usando Gate
         if (!Auth::user()->can('update', $planta)) {
             throw new AuthorizationException('No tienes permisos para crear tareas en esta planta.');
         }
@@ -33,7 +33,6 @@ class TareaController extends Controller
 
     public function store(Request $request, Planta $planta)
     {
-        // Verificar autorización usando Gate
         if (!Auth::user()->can('update', $planta)) {
             throw new AuthorizationException('No tienes permisos para crear tareas en esta planta.');
         }
@@ -57,27 +56,33 @@ class TareaController extends Controller
 
     public function show(Planta $planta, Tarea $tarea)
     {
-        // Verificar autorización usando Gate para la planta
         if (!Auth::user()->can('view', $planta)) {
             throw new AuthorizationException('No tienes permisos para ver esta planta.');
         }
         
-        // Verificar autorización usando Gate para la tarea
         if (!Auth::user()->can('view', $tarea)) {
             throw new AuthorizationException('No tienes permisos para ver esta tarea.');
         }
         
-        return view('tareas.show', compact('planta', 'tarea'));
+        // Cargar registros de riego si es una tarea de riego
+        $registrosRecientes = [];
+        if ($tarea->tipo === 'riego') {
+            $registrosRecientes = $tarea->registrosRiego()
+                ->with('user')
+                ->orderBy('fecha_hora', 'desc')
+                ->take(5)
+                ->get();
+        }
+        
+        return view('tareas.show', compact('planta', 'tarea', 'registrosRecientes'));
     }
 
     public function edit(Planta $planta, Tarea $tarea)
     {
-        // Verificar autorización usando Gate para la planta
         if (!Auth::user()->can('update', $planta)) {
             throw new AuthorizationException('No tienes permisos para editar esta planta.');
         }
         
-        // Verificar autorización usando Gate para la tarea
         if (!Auth::user()->can('update', $tarea)) {
             throw new AuthorizationException('No tienes permisos para editar esta tarea.');
         }
@@ -87,12 +92,10 @@ class TareaController extends Controller
 
     public function update(Request $request, Planta $planta, Tarea $tarea)
     {
-        // Verificar autorización usando Gate para la planta
         if (!Auth::user()->can('update', $planta)) {
             throw new AuthorizationException('No tienes permisos para editar esta planta.');
         }
         
-        // Verificar autorización usando Gate para la tarea
         if (!Auth::user()->can('update', $tarea)) {
             throw new AuthorizationException('No tienes permisos para editar esta tarea.');
         }
@@ -113,12 +116,10 @@ class TareaController extends Controller
 
     public function destroy(Planta $planta, Tarea $tarea)
     {
-        // Verificar autorización usando Gate para la planta
         if (!Auth::user()->can('delete', $planta)) {
             throw new AuthorizationException('No tienes permisos para eliminar esta planta.');
         }
         
-        // Verificar autorización usando Gate para la tarea
         if (!Auth::user()->can('delete', $tarea)) {
             throw new AuthorizationException('No tienes permisos para eliminar esta tarea.');
         }
@@ -131,23 +132,15 @@ class TareaController extends Controller
 
     public function completar(Planta $planta, Tarea $tarea)
     {
-        // Verificar autorización usando Gate para la planta
         if (!Auth::user()->can('update', $planta)) {
             throw new AuthorizationException('No tienes permisos para completar tareas en esta planta.');
         }
         
-        // Verificar autorización usando Gate para la tarea
         if (!Auth::user()->can('update', $tarea)) {
             throw new AuthorizationException('No tienes permisos para completar esta tarea.');
         }
 
-        // Lógica para completar la tarea
-        $tarea->update([
-            'completada' => true, 
-            'fecha_completada' => now(),
-            'proxima_fecha' => now()->addDays($tarea->frecuencia_dias)
-        ]);
-        
-        return redirect()->back()->with('success', 'Tarea completada correctamente');
+        // Redirigir al controlador especializado para completar tareas
+        return redirect()->route('plantas.tareas.completar.store', [$planta->id, $tarea->id]);
     }
 }

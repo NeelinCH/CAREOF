@@ -21,20 +21,20 @@ class TareaCompletadaController extends Controller
         // Procesar según el tipo de tarea
         switch ($tarea->tipo) {
             case 'riego':
-                return $this->registrarRiego($request, $planta, $tarea);
+                return $this->registrarRiego($request, $tarea);
                 
             case 'fertilizacion':
             case 'poda':
             case 'trasplante':
             case 'otro':
-                return $this->registrarTareaGeneral($planta, $tarea, $request->input('observaciones'));
+                return $this->registrarTareaGeneral($tarea);
                 
             default:
                 return redirect()->back()->with('error', 'Tipo de tarea no válido');
         }
     }
 
-    private function registrarRiego(Request $request, Planta $planta, Tarea $tarea)
+    private function registrarRiego(Request $request, Tarea $tarea)
     {
         $request->validate([
             'cantidad_ml' => 'nullable|integer|min:1',
@@ -47,52 +47,54 @@ class TareaCompletadaController extends Controller
             'tarea_id' => $tarea->id,
             'user_id' => Auth::id(),
             'fecha_hora' => now(),
-            'cantidad_ml' => $request->cantidad_ml,
+            'cantidad_ml' => $request->cantidad_ml ?? 0,
             'metodo' => $request->metodo ?? 'Manual',
             'observaciones' => $request->observaciones,
         ]);
 
-        // Actualizar próxima fecha
+        // Actualizar la fecha de última ejecución y calcular próxima fecha
         $tarea->update([
+            'ultima_ejecucion' => now(),
             'proxima_fecha' => now()->addDays($tarea->frecuencia_dias)
         ]);
 
-        // Registrar actividad MANUALMENTE (adicional al trait)
+        // Registrar actividad
         Actividad::create([
             'user_id' => Auth::id(),
-            'planta_id' => $planta->id,
+            'planta_id' => $tarea->planta_id,
             'tipo' => 'riego',
-            'descripcion' => "completó riego manual de {$request->cantidad_ml}ml en {$planta->nombre}",
+            'descripcion' => "realizó riego de {$request->cantidad_ml}ml",
             'detalles' => [
                 'tarea_id' => $tarea->id,
                 'registro_id' => $registro->id,
                 'metodo' => $request->metodo ?? 'Manual',
-                'cantidad_ml' => $request->cantidad_ml,
-                'accion' => 'completar_tarea_riego'
+                'cantidad_ml' => $request->cantidad_ml ?? 0,
+                'observaciones' => $request->observaciones
             ]
         ]);
 
         return redirect()->back()->with('success', 'Riego registrado correctamente');
     }
 
-    private function registrarTareaGeneral(Planta $planta, Tarea $tarea)
+    private function registrarTareaGeneral(Tarea $tarea)
     {
-        // Actualizar próxima fecha
+        // Actualizar la fecha de última ejecución y calcular próxima fecha
         $tarea->update([
+            'ultima_ejecucion' => now(),
             'proxima_fecha' => now()->addDays($tarea->frecuencia_dias)
         ]);
 
-        // Registrar actividad MANUALMENTE
+        // Registrar actividad según el tipo de tarea
         Actividad::create([
             'user_id' => Auth::id(),
-            'planta_id' => $planta->id,
+            'planta_id' => $tarea->planta_id,
             'tipo' => $tarea->tipo,
-            'descripcion' => "completó tarea de {$tarea->tipo} en {$planta->nombre}",
+            'descripcion' => "completó tarea de {$tarea->tipo}",
             'detalles' => [
                 'tarea_id' => $tarea->id,
-                'descripcion_tarea' => $tarea->descripcion,
-                'frecuencia_dias' => $tarea->frecuencia_dias,
-                'accion' => 'completar_tarea_general'
+                'descripcion' => $tarea->descripcion,
+                'tipo_tarea' => $tarea->tipo,
+                'frecuencia_dias' => $tarea->frecuencia_dias
             ]
         ]);
 

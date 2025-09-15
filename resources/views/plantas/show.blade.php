@@ -11,21 +11,17 @@
                 <div class="p-6 bg-white border-b border-gray-200">
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                         <!-- Información de la Planta -->
-                        <!-- Reemplazar la sección de imagen: -->
-<div class="md:col-span-1">
-    <div class="bg-gray-50 p-4 rounded-lg">
-        @if($planta->imagen)
-            <img src="{{ asset('storage/' . $planta->imagen) }}" 
-                 alt="{{ $planta->nombre }}" 
-                 class="w-full h-64 object-cover rounded-md mb-4">
-        @else
-            <div class="w-full h-64 bg-gray-100 flex items-center justify-center rounded-md mb-4">
-                <i class="fas fa-leaf text-gray-400 text-8xl"></i>
-            </div>
-        @endif
-        <!-- resto del código -->
-    </div>
-</div>
+                        <div class="md:col-span-1">
+                            <div class="bg-gray-50 p-4 rounded-lg">
+                                @if($planta->imagen)
+                                    <img src="{{ asset('storage/' . $planta->imagen) }}" 
+                                         alt="{{ $planta->nombre }}" 
+                                         class="w-full h-64 object-cover rounded-md mb-4">
+                                @else
+                                    <div class="w-full h-64 bg-gray-100 flex items-center justify-center rounded-md mb-4">
+                                        <i class="fas fa-leaf text-gray-400 text-8xl"></i>
+                                    </div>
+                                @endif
                                 
                                 <h3 class="text-lg font-medium mb-2">{{ $planta->nombre }}</h3>
                                 <p class="text-gray-600 mb-1"><strong>Especie:</strong> {{ $planta->especie }}</p>
@@ -33,14 +29,17 @@
                                 <p class="text-gray-600 mb-3"><strong>Fecha adquisición:</strong> {{ $planta->fecha_adquisicion->format('d/m/Y') }}</p>
                                 
                                 <div class="flex space-x-2">
-                                    <a href="{{ route('plantas.edit', $planta->id) }}" class="flex-1 text-center bg-yellow-500 hover:bg-yellow-600 text-white py-1 px-3 rounded text-sm">
-                                        <i class="fas fa-edit mr-1"></i> Editar
+                                    <a href="{{ route('plantas.edit', $planta->id) }}" 
+                                       class="flex-1 text-center bg-yellow-500 hover:bg-yellow-600 text-white py-2 px-4 rounded flex items-center justify-center">
+                                        <i class="fas fa-edit mr-2"></i> Editar
                                     </a>
                                     <form action="{{ route('plantas.destroy', $planta->id) }}" method="POST" class="flex-1">
                                         @csrf
                                         @method('DELETE')
-                                        <button type="submit" class="w-full bg-red-500 hover:bg-red-600 text-white py-1 px-3 rounded text-sm" onclick="return confirm('¿Estás seguro de eliminar esta planta?')">
-                                            <i class="fas fa-trash mr-1"></i> Eliminar
+                                        <button type="submit" 
+                                                class="w-full bg-red-500 hover:bg-red-600 text-white py-2 px-4 rounded flex items-center justify-center" 
+                                                onclick="return confirm('¿Estás seguro de eliminar esta planta?')">
+                                            <i class="fas fa-trash mr-2"></i> Eliminar
                                         </button>
                                     </form>
                                 </div>

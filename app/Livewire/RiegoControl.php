@@ -3,256 +3,305 @@
 namespace App\Http\Livewire;
 
 use Livewire\Component;
-use App\Models\Tarea;
 use App\Models\Planta;
+use App\Models\Tarea;
 use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Session;
+use Illuminate\Support\Facades\Log;
 
 class RiegoControl extends Component
 {
-    public $planta;
-    public $tarea;
-    public $puerto = 'COM9';
-    public $tiempoRiego = 2000;
-    public $cantidadMl = 500;
-    public $mensaje = '';
-    public $mostrarConfiguracion = false;
-    public $estadoArduino = 'Desconectado';
-    public $ultimaAccion = null;
-    
-    // Variables temporales para la configuración
-    public $puertoTemp;
-    public $tiempoRiegoTemp;
-    public $cantidadMlTemp;
-
-    // Propiedades para recibir los IDs
     public $plantaId;
     public $tareaId;
+    public $planta;
+    public $tarea;
+    
+    // Estados del componente
+    public $conectado = false;
+    public $regando = false;
+    public $verificandoConexion = false;
+    public $escaneandoPuertos = false;
+    public $estadoArduino = 'Desconocido';
+    
+    // Configuración
+    public $puertoSeleccionado;
+    public $cantidadMl = 500;
+    public $tiempoRiego = 2000;
+    public $puertosDisponibles = [];
+    
+    // Mensajes
+    public $mensaje = '';
+    public $tipoMensaje = 'info'; // success, error, warning, info
+    public $ultimaAccion = '';
 
-    protected $listeners = [
-        'riegoActivado' => 'actualizarEstado',
-        'mostrarConfiguracionUpdated' => 'manejarActualizacionModal'
+    protected $rules = [
+        'cantidadMl' => 'required|integer|min:50|max:5000',
+        'tiempoRiego' => 'required|integer|min:1000|max:30000',
+        'puertoSeleccionado' => 'required|string'
     ];
 
-    public function mount()
+    protected $messages = [
+        'cantidadMl.required' => 'La cantidad es obligatoria',
+        'cantidadMl.min' => 'Mínimo 50ml',
+        'cantidadMl.max' => 'Máximo 5000ml',
+        'tiempoRiego.required' => 'El tiempo es obligatorio',
+        'tiempoRiego.min' => 'Mínimo 1 segundo (1000ms)',
+        'tiempoRiego.max' => 'Máximo 30 segundos (30000ms)',
+        'puertoSeleccionado.required' => 'Selecciona un puerto'
+    ];
+
+    public function mount($plantaId, $tareaId)
     {
-        // Obtener los IDs de las propiedades y cargar los modelos
-        $this->planta = Planta::findOrFail($this->plantaId);
-        $this->tarea = Tarea::findOrFail($this->tareaId);
-        $this->verificarArduino();
+        $this->plantaId = $plantaId;
+        $this->tareaId = $tareaId;
+        $this->planta = Planta::findOrFail($plantaId);
+        $this->tarea = Tarea::findOrFail($tareaId);
         
-        // Cargar configuración guardada en sesión
-        $this->cargarConfiguracion();
+        // Cargar configuración de sesión con más opciones de puertos
+        $this->puertoSeleccionado = session('arduino_port', 'COM3');
+        $this->puertosDisponibles = $this->obtenerPuertosPorDefecto();
+        
+        // Verificar conexión inicial
+        $this->verificarConexionInicial();
+    }
+    
+    /**
+     * Obtener lista de puertos por defecto incluyendo COM9 y COM10
+     */
+    private function obtenerPuertosPorDefecto()
+    {
+        return [
+            ['puerto' => 'COM3', 'descripcion' => 'Puerto COM3 (Común)'],
+            ['puerto' => 'COM4', 'descripcion' => 'Puerto COM4 (Común)'],
+            ['puerto' => 'COM9', 'descripcion' => 'Puerto COM9 (Arduino Uno)'],
+            ['puerto' => 'COM10', 'descripcion' => 'Puerto COM10 (Alternativo)'],
+            ['puerto' => 'COM5', 'descripcion' => 'Puerto COM5'],
+            ['puerto' => 'COM6', 'descripcion' => 'Puerto COM6'],
+        ];
     }
 
-    public function cargarConfiguracion()
+    public function render()
     {
-        $this->puerto = Session::get('arduino_puerto', 'COM9');
-        $this->tiempoRiego = Session::get('arduino_tiempo_riego', 2000);
-        $this->cantidadMl = Session::get('arduino_cantidad_ml', 500);
+        return view('livewire.riego-control');
     }
 
-    public function abrirConfiguracion()
-    {
-        // Guardar valores actuales en variables temporales
-        $this->puertoTemp = $this->puerto;
-        $this->tiempoRiegoTemp = $this->tiempoRiego;
-        $this->cantidadMlTemp = $this->cantidadMl;
-        
-        $this->mostrarConfiguracion = true;
-        $this->dispatch('mostrarConfiguracionUpdated', value: true);
-    }
-
-    public function guardarConfiguracion()
-    {
-        $this->validate([
-            'puertoTemp' => 'required|string',
-            'tiempoRiegoTemp' => 'required|integer|min:100|max:10000',
-            'cantidadMlTemp' => 'required|integer|min:1|max:5000'
-        ]);
-
-        // Guardar en variables principales
-        $this->puerto = $this->puertoTemp;
-        $this->tiempoRiego = $this->tiempoRiegoTemp;
-        $this->cantidadMl = $this->cantidadMlTemp;
-
-        // Guardar en sesión
-        Session::put('arduino_puerto', $this->puerto);
-        Session::put('arduino_tiempo_riego', $this->tiempoRiego);
-        Session::put('arduino_cantidad_ml', $this->cantidadMl);
-
-        $this->mensaje = '✅ Configuración guardada correctamente';
-        $this->mostrarConfiguracion = false;
-        $this->dispatch('mostrarConfiguracionUpdated', value: false);
-        
-        // Emitir evento para actualizar la interfaz
-        $this->dispatch('configuracionGuardada');
-    }
-
-    public function cancelarConfiguracion()
-    {
-        // Restaurar valores originales sin guardar
-        $this->puertoTemp = $this->puerto;
-        $this->tiempoRiegoTemp = $this->tiempoRiego;
-        $this->cantidadMlTemp = $this->cantidadMl;
-        
-        $this->mostrarConfiguracion = false;
-        $this->mensaje = '❌ Configuración cancelada';
-        $this->dispatch('mostrarConfiguracionUpdated', value: false);
-        
-        // Limpiar mensaje después de 2 segundos
-        $this->dispatchBrowserEvent('limpiarMensaje');
-    }
-
-    public function verificarArduino()
+    public function verificarConexionInicial()
     {
         try {
-            $response = Http::timeout(3)->get(url('/api/arduino/estado'));
-            $this->estadoArduino = $response->json()['estado'] ?? 'Error';
+            $this->verificandoConexion = true;
+            $this->verificarConexion();
         } catch (\Exception $e) {
-            $this->estadoArduino = 'Desconectado';
+            $this->mostrarMensaje('Error al verificar conexión inicial', 'error');
+        } finally {
+            $this->verificandoConexion = false;
         }
     }
 
     public function verificarConexion()
     {
         try {
-            $response = Http::withToken(auth()->user()->currentAccessToken()->token ?? '')
-                ->get(url('/api/arduino/verificar-conexion'), [
-                    'puerto' => $this->puerto
-                ]);
+            $this->verificandoConexion = true;
+            $this->limpiarMensaje();
+
+            // Usar URL absoluta en lugar de route() para evitar problemas
+            $url = url('/api/arduino/verificar-conexion') . '?puerto=' . urlencode($this->puertoSeleccionado);
+            
+            $response = Http::timeout(20)->get($url);
 
             if ($response->successful()) {
                 $data = $response->json();
-                $this->estadoArduino = $data['conectado'] ? 'Disponible' : 'Desconectado';
-                
-                $this->mensaje = $data['conectado'] ? 
-                    '✅ ' . $data['mensaje'] : 
-                    '❌ ' . $data['mensaje'];
-                    
-                $this->dispatchBrowserEvent('notificacion', [
-                    'tipo' => $data['conectado'] ? 'success' : 'error',
-                    'mensaje' => $data['mensaje']
-                ]);
+                $this->conectado = $data['conectado'] ?? false;
+                $this->estadoArduino = $this->conectado ? 'Disponible' : 'No disponible';
+                $this->mostrarMensaje($data['mensaje'] ?? '', $this->conectado ? 'success' : 'warning');
+                $this->ultimaAccion = 'Verificación de conexión - ' . now()->format('H:i:s');
+            } else {
+                $this->conectado = false;
+                $this->estadoArduino = 'Error';
+                $this->mostrarMensaje('Error al verificar conexión', 'error');
             }
+
         } catch (\Exception $e) {
-            $this->mensaje = '❌ Error al verificar conexión';
+            $this->conectado = false;
             $this->estadoArduino = 'Error';
-        }
-    }
-
-    public function testComunicacion()
-    {
-        try {
-            $response = Http::withToken(auth()->user()->currentAccessToken()->token ?? '')
-                ->post(url('/api/arduino/test-comunicacion'), [
-                    'puerto' => $this->puerto,
-                    'comando' => 'T'
-                ]);
-
-            if ($response->successful()) {
-                $data = $response->json();
-                
-                $this->mensaje = $data['comunicacion_establecida'] ? 
-                    '✅ ' . $data['mensaje'] . ' Respuesta: ' . $data['respuesta'] : 
-                    '❌ ' . $data['mensaje'];
-                    
-                $this->dispatchBrowserEvent('notificacion', [
-                    'tipo' => $data['comunicacion_establecida'] ? 'success' : 'error',
-                    'mensaje' => $data['mensaje']
-                ]);
-            }
-        } catch (\Exception $e) {
-            $this->mensaje = '❌ Error en test de comunicación';
+            $this->mostrarMensaje('Error de comunicación: ' . $e->getMessage(), 'error');
+            Log::error('Error verificando conexión Arduino: ' . $e->getMessage());
+        } finally {
+            $this->verificandoConexion = false;
         }
     }
 
     public function escanearPuertos()
     {
         try {
-            $response = Http::withToken(auth()->user()->currentAccessToken()->token ?? '')
-                ->get(url('/api/arduino/escanear-puertos'));
+            $this->escaneandoPuertos = true;
+            $this->limpiarMensaje();
+
+            // Usar URL absoluta para la nueva ruta de puertos extendidos
+            $url = url('/api/arduino/puertos-extendidos');
+            
+            $response = Http::timeout(15)->get($url);
 
             if ($response->successful()) {
                 $data = $response->json();
+                $this->puertosDisponibles = $data['puertos'] ?? $this->obtenerPuertosPorDefecto();
                 
-                if (!empty($data['puertos'])) {
-                    $this->mensaje = '✅ Found ' . $data['total'] . ' ports available';
-                    $this->dispatchBrowserEvent('puertosEscaneados', [
-                        'puertos' => $data['puertos']
-                    ]);
-                } else {
-                    $this->mensaje = '❌ No ports found';
+                $mensaje = $data['total'] > 0 ? 
+                    "Encontrados {$data['total']} puertos" : 
+                    'No se encontraron puertos disponibles, usando lista predeterminada';
+                    
+                $this->mostrarMensaje($mensaje, $data['total'] > 0 ? 'success' : 'warning');
+                
+                // Auto-seleccionar el primer puerto si no hay uno seleccionado
+                if (!empty($this->puertosDisponibles) && !$this->puertoSeleccionado) {
+                    $this->puertoSeleccionado = is_array($this->puertosDisponibles[0]) ? 
+                        $this->puertosDisponibles[0]['puerto'] : 
+                        $this->puertosDisponibles[0];
                 }
+            } else {
+                // Fallback a puertos por defecto si la API falla
+                $this->puertosDisponibles = $this->obtenerPuertosPorDefecto();
+                $this->mostrarMensaje('Usando lista predeterminada de puertos', 'warning');
             }
+
         } catch (\Exception $e) {
-            $this->mensaje = '❌ Error scanning ports';
+            // Fallback a puertos por defecto en caso de error
+            $this->puertosDisponibles = $this->obtenerPuertosPorDefecto();
+            $this->mostrarMensaje('Error al escanear puertos, usando lista predeterminada', 'error');
+            Log::error('Error escaneando puertos: ' . $e->getMessage());
+        } finally {
+            $this->escaneandoPuertos = false;
+        }
+    }
+
+    public function testComunicacion()
+    {
+        $this->validate(['puertoSeleccionado' => 'required']);
+
+        try {
+            $this->limpiarMensaje();
+
+            // Usar URL absoluta
+            $url = url('/api/arduino/test-comunicacion');
+            
+            $response = Http::timeout(10)->post($url, [
+                'puerto' => $this->puertoSeleccionado
+            ]);
+
+            if ($response->successful()) {
+                $data = $response->json();
+                $this->conectado = $data['comunicacion_establecida'] ?? false;
+                $this->estadoArduino = $this->conectado ? 'Comunicación OK' : 'Sin comunicación';
+                $this->mostrarMensaje($data['mensaje'] ?? '', $this->conectado ? 'success' : 'error');
+                $this->ultimaAccion = 'Test de comunicación - ' . now()->format('H:i:s');
+            } else {
+                $this->estadoArduino = 'Error de test';
+                $this->mostrarMensaje('Error en el test de comunicación', 'error');
+            }
+
+        } catch (\Exception $e) {
+            $this->estadoArduino = 'Error';
+            $this->mostrarMensaje('Error: ' . $e->getMessage(), 'error');
+            Log::error('Error test comunicación: ' . $e->getMessage());
         }
     }
 
     public function activarRiego()
     {
-        // Prevenir activación si el modal está abierto
-        if ($this->mostrarConfiguracion) {
+        $this->validate();
+
+        if ($this->regando) {
             return;
         }
 
         try {
-            // USAR LA RUTA CORRECTA SEGÚN TU API
-            $response = Http::withToken(auth()->user()->currentAccessToken()->token ?? '')
-                ->post(url("/api/arduino/activar-riego/{$this->planta->id}/{$this->tarea->id}"), [
-                    'puerto' => $this->puerto,
-                    'tiempo' => $this->tiempoRiego,
-                    'cantidad_ml' => $this->cantidadMl
-                ]);
+            $this->regando = true;
+            $this->limpiarMensaje();
+            $this->estadoArduino = 'Regando...';
+
+            // Guardar configuración en sesión
+            session(['arduino_port' => $this->puertoSeleccionado]);
+
+            // Usar URL absoluta
+            $url = url("/api/arduino/activar-riego/{$this->plantaId}/{$this->tareaId}");
+            
+            $response = Http::timeout(30)->post($url, [
+                'puerto' => $this->puertoSeleccionado,
+                'cantidad_ml' => $this->cantidadMl,
+                'tiempo' => $this->tiempoRiego
+            ]);
 
             if ($response->successful()) {
-                $this->mensaje = '✅ Riego activado correctamente';
-                $this->ultimaAccion = now()->format('H:i:s');
-                $this->dispatch('riegoRegistrado');
+                $data = $response->json();
                 
-                // Emitir evento para mostrar notificación
-                $this->dispatchBrowserEvent('notificacion', [
-                    'tipo' => 'success',
-                    'mensaje' => 'Riego activado correctamente'
-                ]);
+                if ($data['success']) {
+                    $this->estadoArduino = 'Riego completado';
+                    $this->mostrarMensaje(
+                        "¡Riego completado! {$data['cantidad']} durante {$data['duracion']}", 
+                        'success'
+                    );
+                    $this->ultimaAccion = "Riego: {$data['cantidad']} - " . now()->format('H:i:s');
+                    
+                    // Refrescar la página después de 3 segundos para mostrar el nuevo registro
+                    $this->emit('riegoCompletado');
+                    $this->dispatchBrowserEvent('riego-completado', [
+                        'message' => $data['message']
+                    ]);
+                    
+                } else {
+                    $this->estadoArduino = 'Error en riego';
+                    $this->mostrarMensaje($data['message'], 'error');
+                    $this->conectado = $data['conectado'] ?? false;
+                }
+                
             } else {
-                $this->mensaje = '❌ Error: ' . $response->json()['message'];
-                $this->dispatchBrowserEvent('notificacion', [
-                    'tipo' => 'error',
-                    'mensaje' => 'Error al activar el riego'
-                ]);
+                $this->estadoArduino = 'Error';
+                $this->mostrarMensaje('Error al activar el riego', 'error');
             }
+
         } catch (\Exception $e) {
-            $this->mensaje = '❌ Error de conexión: ' . $e->getMessage();
-            $this->dispatchBrowserEvent('notificacion', [
-                'tipo' => 'error',
-                'mensaje' => 'Error de conexión con el servidor'
-            ]);
+            $this->estadoArduino = 'Error';
+            $this->mostrarMensaje('Error: ' . $e->getMessage(), 'error');
+            Log::error('Error activando riego: ' . $e->getMessage());
+        } finally {
+            $this->regando = false;
         }
     }
 
-    public function updated($propertyName)
+    public function updatedPuertoSeleccionado()
     {
-        // Prevenir que los cambios en los campos del modal activen otros eventos
-        if ($this->mostrarConfiguracion) {
-            return;
+        if ($this->puertoSeleccionado) {
+            session(['arduino_port' => $this->puertoSeleccionado]);
+            $this->verificarConexion();
         }
     }
 
-    public function manejarActualizacionModal($valor)
+    private function mostrarMensaje($mensaje, $tipo = 'info')
     {
-        // Este método maneja los eventos emitidos cuando el modal se abre/cierra
-        $this->mostrarConfiguracion = $valor;
+        $this->mensaje = $mensaje;
+        $this->tipoMensaje = $tipo;
     }
 
-    public function actualizarEstado()
+    private function limpiarMensaje()
     {
-        $this->verificarArduino();
+        $this->mensaje = '';
+        $this->tipoMensaje = 'info';
     }
 
-    public function render()
+    public function refreshData()
     {
-        return view('livewire.riego-control');
+        $this->verificarConexion();
+    }
+
+    public function resetForm()
+    {
+        $this->cantidadMl = 500;
+        $this->tiempoRiego = 2000;
+        $this->limpiarMensaje();
+        $this->ultimaAccion = '';
+        $this->estadoArduino = 'Desconocido';
+    }
+
+    public function cerrarMensaje()
+    {
+        $this->limpiarMensaje();
     }
 }
