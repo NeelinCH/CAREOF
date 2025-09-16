@@ -20,7 +20,9 @@ class TaskReminder extends Mailable
 
     public function build()
     {
-        return $this->subject('Recordatorio: ' . $this->tarea->tipo . ' para ' . $this->tarea->planta->nombre)
+        return $this->from('rosinethesis2018@gmail.com', 'CARE App')
+            ->replyTo('rosinethesis2018@gmail.com', 'Soporte CARE')
+            ->subject('🌱 Recordatorio: ' . $this->tarea->tipo . ' para ' . $this->tarea->planta->nombre)
             ->markdown('emails.task-reminder');
     }
 }

@@ -21,6 +21,9 @@
                     <x-nav-link :href="route('actividades.index')" :active="request()->routeIs('actividades.*')">
                         {{ __('Actividades') }}
                     </x-nav-link>
+                    <x-nav-link :href="route('estadisticas.index')" :active="request()->routeIs('estadisticas.*')">
+                        <i class="fas fa-chart-bar mr-1"></i>{{ __('Estadísticas') }}
+                    </x-nav-link>
                 </div>
             </div>
 
@@ -40,9 +43,9 @@
                     </x-slot>
 
                     <x-slot name="content">
-                       <x-dropdown-link :href="route('profile.edit')">
-    <i class="fas fa-user mr-2"></i> Mi Perfil
-</x-dropdown-link>
+                        <x-dropdown-link :href="route('profile.edit')">
+                            <i class="fas fa-user mr-2"></i> Mi Perfil
+                        </x-dropdown-link>
 
                         <!-- Authentication -->
                         <form method="POST" action="{{ route('logout') }}">
@@ -81,6 +84,9 @@
             </x-responsive-nav-link>
             <x-responsive-nav-link :href="route('actividades.index')" :active="request()->routeIs('actividades.*')">
                 {{ __('Actividades') }}
+            </x-responsive-nav-link>
+            <x-responsive-nav-link :href="route('estadisticas.index')" :active="request()->routeIs('estadisticas.*')">
+                <i class="fas fa-chart-bar mr-1"></i>{{ __('Estadísticas') }}
             </x-responsive-nav-link>
         </div>
 

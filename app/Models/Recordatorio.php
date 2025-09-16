@@ -12,12 +12,18 @@ class Recordatorio extends Model
     protected $fillable = [
         'tarea_id',
         'fecha_envio',
-        'enviado'
+        'enviado',
+        'tipo_recordatorio',
+        'detalles',
+        'enviado_at',
+        'error_mensaje',
+        'intentos'
     ];
 
-    // Definir los campos de fecha usando $casts
     protected $casts = [
         'fecha_envio' => 'datetime',
+        'enviado_at' => 'datetime',
+        'detalles' => 'array',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
     ];

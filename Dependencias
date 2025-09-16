@@ -17,5 +17,12 @@ php artisan key:generate
 
 php artisan storage:link (imagenes)
 
+
+Comando para pruebas de emails
+php artisan tinker
+Mail::raw('Prueba de CARE App', function($message) {
+    $message->to('rosinethesis2018@gmail.com')->subject('Prueba exitosa');
+});
+
 #Usa 
 php artisan serve --reload para auto-recarga

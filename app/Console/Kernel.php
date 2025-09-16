@@ -14,6 +14,7 @@ class Kernel extends ConsoleKernel
      */
     protected $commands = [
         \App\Console\Commands\SendReminders::class,
+        \App\Console\Commands\TestReminders::class,
     ];
 
     /**
@@ -24,11 +25,17 @@ class Kernel extends ConsoleKernel
      */
     protected function schedule(Schedule $schedule)
     {
-        // Enviar recordatorios cada minuto (en producción podría ser diario)
+        // Enviar recordatorios cada minuto (en producción podrías usar ->daily() o ->hourly())
         $schedule->command('reminders:send')->everyMinute();
         
         // Limpiar tokens expirados semanalmente
         $schedule->command('sanctum:prune-expired --hours=24')->weekly();
+        
+        // Opcional: limpiar recordatorios enviados antiguos (más de 30 días)
+        $schedule->command('model:prune', [
+            '--model' => 'App\Models\Recordatorio',
+            '--except' => ['enviado', false]
+        ])->monthly();
     }
 
     /**
