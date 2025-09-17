@@ -155,6 +155,8 @@ Route::middleware('auth')->group(function () {
 
                 Route::prefix('{registroRiego}')->group(function () {
                     Route::get('/', [RegistroRiegoController::class, 'show'])->name('show');
+                    Route::get('/edit', [RegistroRiegoController::class, 'edit'])->name('edit'); // RUTA AÑADIDA
+                    Route::put('/', [RegistroRiegoController::class, 'update'])->name('update'); // RUTA AÑADIDA
                     Route::delete('/', [RegistroRiegoController::class, 'destroy'])->name('destroy');
                 });
             });

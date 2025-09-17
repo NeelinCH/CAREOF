@@ -101,6 +101,63 @@ class RegistroRiegoController extends Controller
         return view('registros-riego.show', compact('planta', 'tarea', 'registroRiego'));
     }
 
+    public function edit(Planta $planta, Tarea $tarea, RegistroRiego $registroRiego)
+    {
+        // Verificar autorización usando Gate para la planta
+        if (!Auth::user()->can('update', $planta)) {
+            throw new AuthorizationException('No tienes permisos para editar esta planta.');
+        }
+        
+        // Verificar autorización usando Gate para la tarea
+        if (!Auth::user()->can('update', $tarea)) {
+            throw new AuthorizationException('No tienes permisos para editar esta tarea.');
+        }
+        
+        // Verificar autorización usando Gate para el registro
+        if (!Auth::user()->can('update', $registroRiego)) {
+            throw new AuthorizationException('No tienes permisos para editar este registro.');
+        }
+        
+        return view('registros-riego.edit', compact('planta', 'tarea', 'registroRiego'));
+    }
+
+    public function update(Request $request, Planta $planta, Tarea $tarea, RegistroRiego $registroRiego)
+    {
+        // Verificar autorización usando Gate para la planta
+        if (!Auth::user()->can('update', $planta)) {
+            throw new AuthorizationException('No tienes permisos para editar esta planta.');
+        }
+        
+        // Verificar autorización usando Gate para la tarea
+        if (!Auth::user()->can('update', $tarea)) {
+            throw new AuthorizationException('No tienes permisos para editar esta tarea.');
+        }
+        
+        // Verificar autorización usando Gate para el registro
+        if (!Auth::user()->can('update', $registroRiego)) {
+            throw new AuthorizationException('No tienes permisos para editar este registro.');
+        }
+
+        $request->validate([
+            'cantidad_ml' => 'nullable|integer|min:1',
+            'metodo' => 'nullable|string|max:255',
+            'observaciones' => 'nullable|string',
+            'fecha_hora' => 'required|date',
+        ]);
+
+        $data = $request->all();
+        
+        // Convertir la fecha/hora a formato adecuado
+        if ($request->has('fecha_hora')) {
+            $data['fecha_hora'] = \Carbon\Carbon::parse($request->fecha_hora);
+        }
+
+        $registroRiego->update($data);
+
+        return redirect()->route('plantas.tareas.registros.index', [$planta->id, $tarea->id])
+            ->with('success', 'Registro de riego actualizado correctamente.');
+    }
+
     public function destroy(Planta $planta, Tarea $tarea, RegistroRiego $registroRiego)
     {
         // Verificar autorización usando Gate para la planta
