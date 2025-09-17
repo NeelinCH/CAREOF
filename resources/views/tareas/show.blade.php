@@ -131,12 +131,6 @@
                                     <span class="text-gray-600">Ubicación:</span>
                                     <span class="text-gray-900">{{ $planta->ubicacion }}</span>
                                 </div>
-                                <div class="flex justify-between">
-                                    <span class="text-gray-600">Fecha de plantado:</span>
-                                    <span class="text-gray-900">
-                                        {{ $planta->fecha_plantado ? $planta->fecha_plantado->format('d/m/Y') : 'No especificada' }}
-                                    </span>
-                                </div>
                             </div>
                         </div>
                     </div>
